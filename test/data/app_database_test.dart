@@ -59,6 +59,61 @@ void main() {
     expect(oct.last.rawSourceText, 'chai 20');
   });
 
+  group('findPossibleDuplicates', () {
+    late int cashId;
+    setUp(() async {
+      cashId = (await db.select(db.accounts).get()).single.id;
+      await db.addTransaction(
+        TransactionsCompanion.insert(
+          type: TxnType.expense,
+          amountPaise: 25000,
+          accountId: cashId,
+          occurredAt: DateTime(2026, 10, 21, 9, 15),
+          refNo: const Value('629412345678'),
+        ),
+      );
+      await db.addTransaction(
+        TransactionsCompanion.insert(
+          type: TxnType.expense,
+          amountPaise: 2000,
+          accountId: cashId,
+          occurredAt: DateTime(2026, 10, 21, 18),
+        ),
+      );
+    });
+
+    test('matches on ref no. regardless of amount or day', () async {
+      final d = await db.findPossibleDuplicates(
+        amountPaise: 1,
+        day: DateTime(2020),
+        refNo: '629412345678',
+      );
+      expect(d.single.amountPaise, 25000);
+    });
+
+    test('a different ref no. is not a duplicate', () async {
+      final d = await db.findPossibleDuplicates(
+        amountPaise: 25000,
+        day: DateTime(2026, 10, 21),
+        refNo: '000000000000',
+      );
+      expect(d, isEmpty);
+    });
+
+    test('without ref: same amount on the same day', () async {
+      final same = await db.findPossibleDuplicates(
+        amountPaise: 2000,
+        day: DateTime(2026, 10, 21),
+      );
+      expect(same.length, 1);
+      final otherDay = await db.findPossibleDuplicates(
+        amountPaise: 2000,
+        day: DateTime(2026, 10, 22),
+      );
+      expect(otherDay, isEmpty);
+    });
+  });
+
   test('foreign keys are enforced', () async {
     expect(
       () => db.addTransaction(

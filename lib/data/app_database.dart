@@ -120,6 +120,29 @@ class AppDatabase extends _$AppDatabase {
   Future<int> addTransaction(TransactionsCompanion entry) =>
       into(transactions).insert(entry);
 
+  /// Transactions that look like the one about to be saved: the same bank
+  /// ref no. if there is one, otherwise the same amount on the same day.
+  Future<List<Transaction>> findPossibleDuplicates({
+    required int amountPaise,
+    required DateTime day,
+    String? refNo,
+  }) {
+    final q = select(transactions);
+    if (refNo != null && refNo.isNotEmpty) {
+      q.where((t) => t.refNo.equals(refNo));
+    } else {
+      final start = DateTime(day.year, day.month, day.day);
+      final end = DateTime(day.year, day.month, day.day + 1);
+      q.where(
+        (t) =>
+            t.amountPaise.equals(amountPaise) &
+            t.occurredAt.isBiggerOrEqualValue(start) &
+            t.occurredAt.isSmallerThanValue(end),
+      );
+    }
+    return q.get();
+  }
+
   Future<int> deleteTransaction(int id) =>
       (delete(transactions)..where((t) => t.id.equals(id))).go();
 }
