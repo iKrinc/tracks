@@ -152,6 +152,12 @@ Feature-first folders; each feature has `data/`, `domain/`, `presentation/`.
   (`*.g.dart`, `*.drift.dart`) are committed so analyze works without running it.
 - drift uses the `not_shared` builder (`build.yaml`) so its row classes exist before
   riverpod_generator runs. Don't switch back to the shared `.g.dart` part.
+- Schema change: bump `schemaVersion`, add an `onUpgrade` step, then
+  `dart run drift_dev schema dump lib/data/app_database.dart drift_schemas/` and
+  `dart run drift_dev schema generate drift_schemas/ test/data/generated/`, then extend
+  `test/data/migration_test.dart`. Never edit an old `drift_schema_vN.json`.
+- Android emulator: AVD `Medium_Phone` (`flutter emulators --launch Medium_Phone_API_37.0`).
+  On Windows, `flutter run` in the background can't hot reload. Restart it instead.
 - Web preview (UI checks only, Android is the real target):
   `flutter run --release -d web-server --web-port 8080`. `web/sqlite3.wasm` and
   `web/drift_worker.js` are copied from the drift package. Refresh them when

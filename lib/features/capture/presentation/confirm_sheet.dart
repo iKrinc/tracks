@@ -16,6 +16,8 @@ Future<bool?> showConfirmSheet(BuildContext context, {CaptureDraft? draft}) {
   return showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
+    // Above the bottom navigation, not inside the current tab.
+    useRootNavigator: true,
     showDragHandle: true,
     useSafeArea: true,
     builder: (_) => ConfirmSheet(draft: draft),

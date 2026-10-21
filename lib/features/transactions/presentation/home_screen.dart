@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:tracks/app/icons.dart';
+import 'package:go_router/go_router.dart';
 import 'package:tracks/app/providers.dart';
 import 'package:tracks/app/theme.dart';
 import 'package:tracks/core/dates.dart';
@@ -10,273 +10,198 @@ import 'package:tracks/features/capture/domain/capture_draft.dart';
 import 'package:tracks/features/capture/presentation/confirm_sheet.dart';
 import 'package:tracks/features/capture/presentation/share_intake.dart';
 import 'package:tracks/features/transactions/domain/summary.dart';
+import 'package:tracks/features/transactions/presentation/calendar_view.dart';
+import 'package:tracks/features/transactions/presentation/search_screen.dart';
+import 'package:tracks/features/transactions/presentation/txn_list.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  bool _calendar = false;
+  DateTime? _selectedDay;
+
+  @override
+  Widget build(BuildContext context) {
     final month = ref.watch(selectedMonthProvider);
     final txns = ref.watch(monthTransactionsProvider);
-    final accounts = {
-      for (final a in ref.watch(accountsProvider).value ?? const <Account>[])
-        a.id: a,
-    };
-    final categories = {
-      for (final kind in CategoryKind.values)
-        for (final c
-            in ref.watch(categoriesProvider(kind)).value ?? const <Category>[])
-          c.id: c,
-    };
+    final lookup = watchTxnLookup(ref);
     final monthCtl = ref.read(selectedMonthProvider.notifier);
+    void changeMonth(VoidCallback change) => setState(() {
+      change();
+      _selectedDay = null;
+    });
 
-    return ShareIntake(
-      child: Scaffold(
-        appBar: AppBar(
-          centerTitle: true,
-          title: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                tooltip: 'Previous month',
-                icon: const Icon(Icons.chevron_left),
-                onPressed: monthCtl.previous,
-              ),
-              Text(monthLabel(month)),
-              IconButton(
-                tooltip: 'Next month',
-                icon: const Icon(Icons.chevron_right),
-                onPressed: monthCtl.next,
-              ),
-            ],
-          ),
+    return Scaffold(
+      appBar: AppBar(
+        centerTitle: true,
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              tooltip: 'Previous month',
+              icon: const Icon(Icons.chevron_left),
+              onPressed: () => changeMonth(monthCtl.previous),
+            ),
+            Text(monthLabel(month)),
+            IconButton(
+              tooltip: 'Next month',
+              icon: const Icon(Icons.chevron_right),
+              onPressed: () => changeMonth(monthCtl.next),
+            ),
+          ],
         ),
-        body: SafeArea(
-          top: false,
-          child: Column(
-            children: [
-              Expanded(
-                child: txns.when(
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (e, _) => Center(child: Text('Could not load: $e')),
-                  data: (list) => _MonthBody(
-                    txns: list,
-                    accounts: accounts,
-                    categories: categories,
-                  ),
-                ),
-              ),
-              const _QuickAddBar(),
-            ],
+        actions: [
+          IconButton(
+            tooltip: 'Search',
+            icon: const Icon(Icons.search),
+            onPressed: () => context.push('/search'),
           ),
-        ),
+          IconButton(
+            tooltip: _calendar ? 'List view' : 'Calendar view',
+            icon: Icon(
+              _calendar ? Icons.view_agenda_outlined : Icons.calendar_month,
+            ),
+            onPressed: () => setState(() {
+              _calendar = !_calendar;
+              _selectedDay = null;
+            }),
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: txns.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (e, _) => Center(child: Text('Could not load: $e')),
+              data: (list) {
+                final selected = _selectedDay;
+                final shown = _calendar && selected != null
+                    ? list
+                          .where((t) => dateOnly(t.occurredAt) == selected)
+                          .toList()
+                    : list;
+                return CustomScrollView(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: SummaryCard(
+                        totals: totalsOfTxns(list),
+                        month: month,
+                      ),
+                    ),
+                    if (_calendar)
+                      SliverToBoxAdapter(
+                        child: CalendarGrid(
+                          month: month,
+                          txns: list,
+                          selected: selected,
+                          onSelect: (d) => setState(
+                            () => _selectedDay = d == selected ? null : d,
+                          ),
+                        ),
+                      ),
+                    if (list.isEmpty)
+                      const SliverFillRemaining(
+                        hasScrollBody: false,
+                        child: _EmptyState(),
+                      )
+                    else if (_calendar && selected == null)
+                      const SliverToBoxAdapter(
+                        child: Padding(
+                          padding: EdgeInsets.all(24),
+                          child: Text(
+                            'Tap a day to see its transactions',
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      )
+                    else
+                      ...dayGroupSlivers(shown, lookup),
+                    const SliverPadding(padding: EdgeInsets.only(bottom: 12)),
+                  ],
+                );
+              },
+            ),
+          ),
+          const _QuickAddBar(),
+        ],
       ),
     );
   }
 }
 
-class _MonthBody extends StatelessWidget {
-  const _MonthBody({
-    required this.txns,
-    required this.accounts,
-    required this.categories,
-  });
-
-  final List<Transaction> txns;
-  final Map<int, Account> accounts;
-  final Map<int, Category> categories;
-
-  @override
-  Widget build(BuildContext context) {
-    final totals = totalsOf(
-      txns.map((t) => (type: t.type, amountPaise: t.amountPaise)),
-    );
-    final days = groupByDay(txns, (t) => t.occurredAt);
-
-    return CustomScrollView(
-      slivers: [
-        SliverToBoxAdapter(child: _SummaryCard(totals: totals)),
-        if (txns.isEmpty)
-          const SliverFillRemaining(hasScrollBody: false, child: _EmptyState()),
-        for (final (day, items) in days) ...[
-          SliverToBoxAdapter(
-            child: _DayHeader(day: day, items: items),
-          ),
-          SliverList.list(
-            children: [
-              for (final t in items)
-                _TxnTile(
-                  txn: t,
-                  account: accounts[t.accountId],
-                  toAccount: t.toAccountId == null
-                      ? null
-                      : accounts[t.toAccountId],
-                  category: t.categoryId == null
-                      ? null
-                      : categories[t.categoryId],
-                ),
-            ],
-          ),
-        ],
-        const SliverPadding(padding: EdgeInsets.only(bottom: 12)),
-      ],
-    );
-  }
-}
-
-class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({required this.totals});
+/// Month income / expense / total. Each figure opens the transactions
+/// behind it.
+class SummaryCard extends StatelessWidget {
+  const SummaryCard({super.key, required this.totals, required this.month});
 
   final Totals totals;
+  final DateTime month;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    Widget cell(String label, int paise, Color color) => Expanded(
-      child: Column(
-        children: [
-          Text(label, style: theme.textTheme.labelMedium),
-          const SizedBox(height: 4),
-          FittedBox(
-            child: Text(
-              formatPaise(paise),
-              style: theme.textTheme.titleMedium?.copyWith(color: color),
+    Widget cell(String label, int paise, Color color, TxnType? type) =>
+        Expanded(
+          child: Semantics(
+            button: true,
+            label: '$label ${spokenPaise(paise)}',
+            excludeSemantics: true,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(12),
+              onTap: () => context.push(
+                '/search',
+                extra: SearchArgs(type: type, month: month),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Column(
+                  children: [
+                    Text(label, style: theme.textTheme.labelMedium),
+                    const SizedBox(height: 4),
+                    FittedBox(
+                      child: Text(
+                        formatPaise(paise),
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: color,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-        ],
-      ),
-    );
+        );
 
     return Card(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
       elevation: 0,
       color: theme.colorScheme.secondaryContainer,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
         child: Row(
           children: [
-            cell('Income', totals.incomePaise, theme.incomeColor),
-            cell('Expense', totals.expensePaise, theme.expenseColor),
-            cell('Total', totals.netPaise, theme.colorScheme.onSurface),
+            cell(
+              'Income',
+              totals.incomePaise,
+              theme.incomeColor,
+              TxnType.income,
+            ),
+            cell(
+              'Expense',
+              totals.expensePaise,
+              theme.expenseColor,
+              TxnType.expense,
+            ),
+            cell('Total', totals.netPaise, theme.colorScheme.onSurface, null),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DayHeader extends StatelessWidget {
-  const _DayHeader({required this.day, required this.items});
-
-  final DateTime day;
-  final List<Transaction> items;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final t = totalsOf(
-      items.map((t) => (type: t.type, amountPaise: t.amountPaise)),
-    );
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
-      child: Row(
-        children: [
-          Text('${day.day}', style: theme.textTheme.titleLarge),
-          const SizedBox(width: 8),
-          Text(weekdayShort(day), style: theme.textTheme.labelLarge),
-          const Spacer(),
-          if (t.incomePaise > 0)
-            Text(
-              formatPaise(t.incomePaise),
-              style: TextStyle(color: theme.incomeColor),
-            ),
-          if (t.incomePaise > 0 && t.expensePaise > 0)
-            const SizedBox(width: 12),
-          if (t.expensePaise > 0)
-            Text(
-              formatPaise(t.expensePaise),
-              style: TextStyle(color: theme.expenseColor),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TxnTile extends ConsumerWidget {
-  const _TxnTile({
-    required this.txn,
-    required this.account,
-    required this.toAccount,
-    required this.category,
-  });
-
-  final Transaction txn;
-  final Account? account;
-  final Account? toAccount;
-  final Category? category;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final theme = Theme.of(context);
-    final transfer = txn.type == TxnType.transfer;
-    final title = txn.note.isNotEmpty
-        ? txn.note
-        : (transfer ? 'Transfer' : category?.name ?? 'Uncategorised');
-    final subtitle = transfer
-        ? '${account?.name ?? '?'} → ${toAccount?.name ?? '?'}'
-        : [category?.name, account?.name].nonNulls.join(' · ');
-    final color = switch (txn.type) {
-      TxnType.income => theme.incomeColor,
-      TxnType.expense => theme.expenseColor,
-      TxnType.transfer => theme.colorScheme.onSurfaceVariant,
-    };
-
-    return Dismissible(
-      key: ValueKey(txn.id),
-      direction: DismissDirection.endToStart,
-      background: Container(
-        alignment: Alignment.centerRight,
-        padding: const EdgeInsets.only(right: 24),
-        color: theme.colorScheme.errorContainer,
-        child: Icon(
-          Icons.delete_outline,
-          color: theme.colorScheme.onErrorContainer,
-        ),
-      ),
-      onDismissed: (_) async {
-        final db = ref.read(appDatabaseProvider);
-        final messenger = ScaffoldMessenger.of(context);
-        await db.deleteTransaction(txn.id);
-        messenger
-          ..hideCurrentSnackBar()
-          ..showSnackBar(
-            SnackBar(
-              content: const Text('Deleted'),
-              action: SnackBarAction(
-                label: 'Undo',
-                onPressed: () => db.addTransaction(txn.toCompanion(true)),
-              ),
-            ),
-          );
-      },
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: Color(category?.color ?? 0xFFCBF0F8),
-          foregroundColor: Colors.black87,
-          child: Icon(
-            transfer ? Icons.swap_horiz : iconFor(category?.icon ?? ''),
-            size: 20,
-          ),
-        ),
-        title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: subtitle.isEmpty
-            ? null
-            : Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
-        trailing: Text(
-          formatPaise(txn.amountPaise),
-          style: theme.textTheme.titleSmall?.copyWith(color: color),
         ),
       ),
     );
@@ -299,7 +224,8 @@ class _EmptyState extends StatelessWidget {
           Text('Nothing here yet', style: theme.textTheme.titleMedium),
           const SizedBox(height: 4),
           Text(
-            'Type "chai 20" or "petrol 500 card" below',
+            'Type "chai 20" or "petrol 500 card" below,\n'
+            'or share a bank SMS to Tracks',
             style: theme.textTheme.bodyMedium,
             textAlign: TextAlign.center,
           ),

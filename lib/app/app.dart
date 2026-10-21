@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tracks/app/router.dart';
 import 'package:tracks/app/theme.dart';
+import 'package:tracks/features/settings/presentation/app_lock_gate.dart';
 
 class TracksApp extends StatelessWidget {
   const TracksApp({super.key});
@@ -13,6 +14,7 @@ class TracksApp extends StatelessWidget {
       theme: buildTheme(Brightness.light),
       darkTheme: buildTheme(Brightness.dark),
       routerConfig: appRouter,
+      builder: (context, child) => AppLockGate(child: child!),
     );
   }
 }

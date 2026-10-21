@@ -89,6 +89,53 @@ final class AccountsProvider
 
 String _$accountsHash() => r'b3f110a176b8f57a0de153b0ea0d530685f00f94';
 
+/// Active and archived accounts: for naming accounts on transaction rows
+/// and for balances (archiving hides an account, it doesn't erase money).
+
+@ProviderFor(allAccounts)
+final allAccountsProvider = AllAccountsProvider._();
+
+/// Active and archived accounts: for naming accounts on transaction rows
+/// and for balances (archiving hides an account, it doesn't erase money).
+
+final class AllAccountsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Account>>,
+          List<Account>,
+          Stream<List<Account>>
+        >
+    with $FutureModifier<List<Account>>, $StreamProvider<List<Account>> {
+  /// Active and archived accounts: for naming accounts on transaction rows
+  /// and for balances (archiving hides an account, it doesn't erase money).
+  AllAccountsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'allAccountsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$allAccountsHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<List<Account>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<Account>> create(Ref ref) {
+    return allAccounts(ref);
+  }
+}
+
+String _$allAccountsHash() => r'45fa61c515e23fcfbdb502b1b275f55fc19a48f4';
+
 @ProviderFor(categories)
 final categoriesProvider = CategoriesFamily._();
 
@@ -256,3 +303,157 @@ final class MonthTransactionsProvider
 }
 
 String _$monthTransactionsHash() => r'2fa5aec86ea57ca6f6f47d975c63ce7609df085d';
+
+@ProviderFor(txnTotals)
+final txnTotalsProvider = TxnTotalsProvider._();
+
+final class TxnTotalsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<TxnTotal>>,
+          List<TxnTotal>,
+          Stream<List<TxnTotal>>
+        >
+    with $FutureModifier<List<TxnTotal>>, $StreamProvider<List<TxnTotal>> {
+  TxnTotalsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'txnTotalsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$txnTotalsHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<List<TxnTotal>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<TxnTotal>> create(Ref ref) {
+    return txnTotals(ref);
+  }
+}
+
+String _$txnTotalsHash() => r'f20993b35710cf49992f4919de96567d234affbf';
+
+/// Current balance in paise per account (archived ones included).
+
+@ProviderFor(balances)
+final balancesProvider = BalancesProvider._();
+
+/// Current balance in paise per account (archived ones included).
+
+final class BalancesProvider
+    extends $FunctionalProvider<Map<int, int>, Map<int, int>, Map<int, int>>
+    with $Provider<Map<int, int>> {
+  /// Current balance in paise per account (archived ones included).
+  BalancesProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'balancesProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$balancesHash();
+
+  @$internal
+  @override
+  $ProviderElement<Map<int, int>> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  Map<int, int> create(Ref ref) {
+    return balances(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Map<int, int> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Map<int, int>>(value),
+    );
+  }
+}
+
+String _$balancesHash() => r'4685d1178a460188aa1260e86e97bc2a8ae95412';
+
+@ProviderFor(setting)
+final settingProvider = SettingFamily._();
+
+final class SettingProvider
+    extends $FunctionalProvider<AsyncValue<String?>, String?, Stream<String?>>
+    with $FutureModifier<String?>, $StreamProvider<String?> {
+  SettingProvider._({
+    required SettingFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'settingProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$settingHash();
+
+  @override
+  String toString() {
+    return r'settingProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<String?> $createElement($ProviderPointer pointer) =>
+      $StreamProviderElement(pointer);
+
+  @override
+  Stream<String?> create(Ref ref) {
+    final argument = this.argument as String;
+    return setting(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is SettingProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$settingHash() => r'e18732dc15dded8ff88383dad489a063d078a463';
+
+final class SettingFamily extends $Family
+    with $FunctionalFamilyOverride<Stream<String?>, String> {
+  SettingFamily._()
+    : super(
+        retry: null,
+        name: r'settingProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  SettingProvider call(String key) =>
+      SettingProvider._(argument: key, from: this);
+
+  @override
+  String toString() => r'settingProvider';
+}
