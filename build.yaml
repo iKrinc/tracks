@@ -1,0 +1,15 @@
+targets:
+  $default:
+    builders:
+      # Generate drift code into its own part (app_database.drift.dart)
+      # instead of the shared .g.dart, so riverpod_generator can see the
+      # row classes (Account, Transaction, ...) it needs.
+      drift_dev:
+        enabled: false
+      drift_dev:not_shared:
+        enabled: true
+
+global_options:
+  drift_dev:not_shared:
+    runs_before:
+      - riverpod_generator
