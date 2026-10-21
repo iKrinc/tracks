@@ -48,6 +48,24 @@ String formatPaise(
   return buf.toString();
 }
 
+/// Short rupee figure for tight spaces (calendar cells): `20`, `1.2k`,
+/// `1.5L` (lakh), `2.3Cr` (crore). Truncates, never rounds up.
+String compactPaise(int paise) {
+  final sign = paise < 0 ? '-' : '';
+  final rupees = paise.abs() ~/ 100;
+  String unit(int size, String suffix) {
+    final tenths = rupees * 10 ~/ size;
+    final whole = tenths ~/ 10;
+    final frac = tenths % 10;
+    return '$sign$whole${whole < 10 && frac > 0 ? '.$frac' : ''}$suffix';
+  }
+
+  if (rupees >= 10000000) return unit(10000000, 'Cr');
+  if (rupees >= 100000) return unit(100000, 'L');
+  if (rupees >= 1000) return unit(1000, 'k');
+  return '$sign$rupees';
+}
+
 /// Screen-reader text for an amount, e.g. `12050` → `120 rupees 50 paise`.
 String spokenPaise(int paise) {
   final abs = paise.abs();

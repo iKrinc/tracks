@@ -11,6 +11,9 @@ enum TxnType { expense, income, transfer }
 
 enum TxnSource { manual, sms, screenshot, quickText, recurring, import }
 
+/// One aggregated row: the sum of all transactions sharing these keys.
+typedef TxnTotal = ({int accountId, int? toAccountId, TxnType type, int sum});
+
 class Accounts extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text().withLength(min: 1, max: 60)();
@@ -87,4 +90,13 @@ class Rules extends Table {
   IntColumn get accountId => integer().nullable().references(Accounts, #id)();
   IntColumn get hits => integer().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// Small key/value store for preferences (app lock, etc.). Added in v2.
+class AppSettings extends Table {
+  TextColumn get key => text()();
+  TextColumn get value => text()();
+
+  @override
+  Set<Column> get primaryKey => {key};
 }

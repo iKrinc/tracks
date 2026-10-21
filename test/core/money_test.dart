@@ -50,6 +50,19 @@ void main() {
     });
   });
 
+  group('compactPaise', () {
+    test('Indian short units for tight spaces', () {
+      expect(compactPaise(2000), '20');
+      expect(compactPaise(99999), '999');
+      expect(compactPaise(120000), '1.2k');
+      expect(compactPaise(1000000), '10k');
+      expect(compactPaise(15000000), '1.5L');
+      expect(compactPaise(230000000), '23L');
+      expect(compactPaise(2300000000), '2.3Cr');
+      expect(compactPaise(-120000), '-1.2k');
+    });
+  });
+
   group('spokenPaise', () {
     test('reads as words for screen readers', () {
       expect(spokenPaise(12000), '120 rupees');

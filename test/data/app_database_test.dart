@@ -114,6 +114,48 @@ void main() {
     });
   });
 
+  group('search and totals', () {
+    late int cashId;
+    setUp(() async {
+      cashId = (await db.select(db.accounts).get()).single.id;
+      Future<void> add(TxnType type, int paise, String note, {String? m}) =>
+          db.addTransaction(
+            TransactionsCompanion.insert(
+              type: type,
+              amountPaise: paise,
+              accountId: cashId,
+              occurredAt: DateTime(2026, 10, 21),
+              note: Value(note),
+              merchant: Value(m),
+            ),
+          );
+      await add(TxnType.expense, 2000, 'Chai at office');
+      await add(TxnType.expense, 25000, 'dinner', m: 'SWIGGY');
+      await add(TxnType.income, 5000000, 'Salary');
+    });
+
+    test('matches every word, case-insensitive, in note or merchant', () async {
+      expect((await db.watchSearch(query: 'CHAI office').first).length, 1);
+      expect(
+        (await db.watchSearch(query: 'swiggy').first).single.note,
+        'dinner',
+      );
+      expect(await db.watchSearch(query: 'chai dinner').first, isEmpty);
+    });
+
+    test('filters by type', () async {
+      final r = await db.watchSearch(type: TxnType.income).first;
+      expect(r.single.note, 'Salary');
+    });
+
+    test('totals group by account and type', () async {
+      final totals = await db.watchTxnTotals().first;
+      final expense = totals.singleWhere((t) => t.type == TxnType.expense);
+      expect(expense.sum, 27000);
+      expect(expense.accountId, cashId);
+    });
+  });
+
   test('foreign keys are enforced', () async {
     expect(
       () => db.addTransaction(

@@ -7,12 +7,14 @@ export 'package:tracks/data/tables.dart';
 
 part 'app_database.drift.dart';
 
-@DriftDatabase(tables: [Accounts, Categories, Transactions, Rules])
+@DriftDatabase(tables: [Accounts, Categories, Transactions, Rules, AppSettings])
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _open());
 
+  /// v1: accounts, categories, transactions, rules.
+  /// v2: app_settings.
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   static QueryExecutor _open() => driftDatabase(
     name: 'tracks',
@@ -28,6 +30,9 @@ class AppDatabase extends _$AppDatabase {
     onCreate: (m) async {
       await m.createAll();
       await _seedDefaults();
+    },
+    onUpgrade: (m, from, to) async {
+      if (from < 2) await m.createTable(appSettings);
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
@@ -94,6 +99,11 @@ class AppDatabase extends _$AppDatabase {
             ..orderBy([(a) => OrderingTerm(expression: a.sortOrder)]))
           .watch();
 
+  /// Including archived accounts, which old transactions still refer to.
+  Stream<List<Account>> watchAllAccounts() => (select(
+    accounts,
+  )..orderBy([(a) => OrderingTerm(expression: a.sortOrder)])).watch();
+
   Stream<List<Category>> watchCategories(CategoryKind kind) =>
       (select(categories)
             ..where((c) => c.kind.equalsValue(kind) & c.archived.equals(false))
@@ -142,6 +152,85 @@ class AppDatabase extends _$AppDatabase {
     }
     return q.get();
   }
+
+  /// Sums per (account, to-account, type), for balances.
+  Stream<List<TxnTotal>> watchTxnTotals() =>
+      customSelect(
+        'SELECT account_id, to_account_id, type, SUM(amount_paise) AS total '
+        'FROM transactions GROUP BY account_id, to_account_id, type',
+        readsFrom: {transactions},
+      ).watch().map(
+        (rows) => [
+          for (final r in rows)
+            (
+              accountId: r.read<int>('account_id'),
+              toAccountId: r.readNullable<int>('to_account_id'),
+              type: TxnType.values.byName(r.read<String>('type')),
+              sum: r.read<int>('total'),
+            ),
+        ],
+      );
+
+  Future<void> saveAccount(AccountsCompanion a) =>
+      into(accounts).insertOnConflictUpdate(a);
+
+  /// Search notes, merchants and raw text, newest first. Null filters are
+  /// ignored; [to] is exclusive.
+  Stream<List<Transaction>> watchSearch({
+    String query = '',
+    TxnType? type,
+    int? accountId,
+    int? categoryId,
+    DateTime? from,
+    DateTime? to,
+    int limit = 500,
+  }) {
+    final q = select(transactions);
+    final words = query
+        .trim()
+        .toLowerCase()
+        .split(RegExp(r'\s+'))
+        .where((w) => w.isNotEmpty);
+    q.where((t) {
+      Expression<bool> e = const Constant(true);
+      for (final w in words) {
+        final like = '%$w%';
+        e &=
+            t.note.lower().like(like) |
+            t.merchant.lower().like(like) |
+            t.tags.lower().like(like);
+      }
+      if (type != null) e &= t.type.equalsValue(type);
+      if (accountId != null) {
+        e &= t.accountId.equals(accountId) | t.toAccountId.equals(accountId);
+      }
+      if (categoryId != null) e &= t.categoryId.equals(categoryId);
+      if (from != null) e &= t.occurredAt.isBiggerOrEqualValue(from);
+      if (to != null) e &= t.occurredAt.isSmallerThanValue(to);
+      return e;
+    });
+    q
+      ..orderBy([
+        (t) => OrderingTerm.desc(t.occurredAt),
+        (t) => OrderingTerm.desc(t.id),
+      ])
+      ..limit(limit);
+    return q.watch();
+  }
+
+  // ---- Settings ----------------------------------------------------------
+
+  Stream<String?> watchSetting(String key) => (select(
+    appSettings,
+  )..where((s) => s.key.equals(key))).watchSingleOrNull().map((s) => s?.value);
+
+  Future<String?> getSetting(String key) => (select(
+    appSettings,
+  )..where((s) => s.key.equals(key))).getSingleOrNull().then((s) => s?.value);
+
+  Future<void> setSetting(String key, String value) =>
+      into(appSettings)
+          .insertOnConflictUpdate(AppSetting(key: key, value: value));
 
   Future<int> deleteTransaction(int id) =>
       (delete(transactions)..where((t) => t.id.equals(id))).go();
