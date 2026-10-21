@@ -7,9 +7,10 @@ abstract final class Palette {
   static const lilac = Color(0xFFD7AEFB);
   static const pink = Color(0xFFFDCFE8);
 
-  // Gentle amount colours — readable without being harsh.
-  static const income = Color(0xFF2E7D5B);
-  static const expense = Color(0xFFB24A6B);
+  // Gentle amount colours. Measured ≥ 5.2:1 on white and on [sky]; see
+  // .claude/skills/tracks-design before changing them.
+  static const income = Color(0xFF276B4E);
+  static const expense = Color(0xFF9E3F5E);
   static const incomeDark = Color(0xFF8FD8B4);
   static const expenseDark = Color(0xFFF4A7C0);
 }

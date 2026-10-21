@@ -168,3 +168,9 @@ Feature-first folders; each feature has `data/`, `domain/`, `presentation/`.
 - Never store real personal SMS or screenshots in the repo — only anonymised fixtures.
 - Prefer boring, well-maintained packages; ask before adding a new dependency.
 - Keep UI friendly and fast: confirm cards, bottom sheets, swipe actions — avoid long forms.
+- Before any UI work, load the `tracks-design` skill (`.claude/skills/tracks-design/`). After it,
+  run the `design-reviewer` subagent on the diff and fix its findings before committing.
+  `design-taste-frontend` and `frontend-design` are web skills: use them only as tracks-design
+  describes.
+- The Dart MCP server (`.mcp.json`) handles analyze, tests and pub. On Windows a local-scope
+  override runs it via `cmd /c dart.bat`.
