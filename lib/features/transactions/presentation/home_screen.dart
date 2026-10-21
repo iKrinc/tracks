@@ -6,8 +6,9 @@ import 'package:tracks/app/theme.dart';
 import 'package:tracks/core/dates.dart';
 import 'package:tracks/core/money.dart';
 import 'package:tracks/data/app_database.dart';
-import 'package:tracks/features/capture/domain/quick_add_parser.dart';
+import 'package:tracks/features/capture/domain/capture_draft.dart';
 import 'package:tracks/features/capture/presentation/confirm_sheet.dart';
+import 'package:tracks/features/capture/presentation/share_intake.dart';
 import 'package:tracks/features/transactions/domain/summary.dart';
 
 class HomeScreen extends ConsumerWidget {
@@ -29,43 +30,46 @@ class HomeScreen extends ConsumerWidget {
     };
     final monthCtl = ref.read(selectedMonthProvider.notifier);
 
-    return Scaffold(
-      appBar: AppBar(
-        centerTitle: true,
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              tooltip: 'Previous month',
-              icon: const Icon(Icons.chevron_left),
-              onPressed: monthCtl.previous,
-            ),
-            Text(monthLabel(month)),
-            IconButton(
-              tooltip: 'Next month',
-              icon: const Icon(Icons.chevron_right),
-              onPressed: monthCtl.next,
-            ),
-          ],
+    return ShareIntake(
+      child: Scaffold(
+        appBar: AppBar(
+          centerTitle: true,
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                tooltip: 'Previous month',
+                icon: const Icon(Icons.chevron_left),
+                onPressed: monthCtl.previous,
+              ),
+              Text(monthLabel(month)),
+              IconButton(
+                tooltip: 'Next month',
+                icon: const Icon(Icons.chevron_right),
+                onPressed: monthCtl.next,
+              ),
+            ],
+          ),
         ),
-      ),
-      body: SafeArea(
-        top: false,
-        child: Column(
-          children: [
-            Expanded(
-              child: txns.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (e, _) => Center(child: Text('Could not load: $e')),
-                data: (list) => _MonthBody(
-                  txns: list,
-                  accounts: accounts,
-                  categories: categories,
+        body: SafeArea(
+          top: false,
+          child: Column(
+            children: [
+              Expanded(
+                child: txns.when(
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (e, _) => Center(child: Text('Could not load: $e')),
+                  data: (list) => _MonthBody(
+                    txns: list,
+                    accounts: accounts,
+                    categories: categories,
+                  ),
                 ),
               ),
-            ),
-            const _QuickAddBar(),
-          ],
+              const _QuickAddBar(),
+            ],
+          ),
         ),
       ),
     );
@@ -328,29 +332,15 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
       return;
     }
     final accounts = ref.read(accountsProvider).value ?? const <Account>[];
-    final keywords = {
-      for (final a in accounts) ...[
-        ...a.name.toLowerCase().split(' '),
-        ...a.matchHints.toLowerCase().split(',').map((h) => h.trim()),
-      ],
-    }..remove('');
-    final parsed = parseQuickAdd(
-      text,
-      now: DateTime.now(),
-      accountKeywords: keywords,
-    );
-    if (parsed == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Add an amount, e.g. "chai 20"')),
-      );
-      return;
-    }
-    final saved = await showConfirmSheet(
+    final saved = await presentCapture(
       context,
-      parsed: parsed,
-      rawText: text,
+      captureFromQuickAdd(
+        text,
+        now: DateTime.now(),
+        accountKeywords: accountKeywordsOf(accounts),
+      ),
     );
-    if (saved == true) _ctl.clear();
+    if (saved) _ctl.clear();
   }
 
   @override

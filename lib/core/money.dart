@@ -48,6 +48,18 @@ String formatPaise(
   return buf.toString();
 }
 
+/// Screen-reader text for an amount, e.g. `12050` → `120 rupees 50 paise`.
+String spokenPaise(int paise) {
+  final abs = paise.abs();
+  final rupees = abs ~/ 100;
+  final rem = abs % 100;
+  final parts = [
+    if (rupees > 0 || rem == 0) '$rupees ${rupees == 1 ? 'rupee' : 'rupees'}',
+    if (rem > 0) '$rem paise',
+  ];
+  return '${paise < 0 ? 'minus ' : ''}${parts.join(' ')}';
+}
+
 /// Groups digits as 1,23,45,678: last three, then pairs.
 String _groupIndian(String digits) {
   if (digits.length <= 3) return digits;

@@ -50,6 +50,17 @@ void main() {
     });
   });
 
+  group('spokenPaise', () {
+    test('reads as words for screen readers', () {
+      expect(spokenPaise(12000), '120 rupees');
+      expect(spokenPaise(12050), '120 rupees 50 paise');
+      expect(spokenPaise(100), '1 rupee');
+      expect(spokenPaise(5), '5 paise');
+      expect(spokenPaise(0), '0 rupees');
+      expect(spokenPaise(-2000), 'minus 20 rupees');
+    });
+  });
+
   group('formatPaise', () {
     test('Indian grouping', () {
       expect(formatPaise(0), '₹0.00');
