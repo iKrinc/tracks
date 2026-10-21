@@ -76,8 +76,9 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
     String join(String a) => desc.isEmpty ? a : '$desc · $a';
     return switch (p.kind) {
       QuickAddKind.lent when person != null => join('Lent to $person'),
-      QuickAddKind.borrowed when person != null =>
-        join('Borrowed from $person'),
+      QuickAddKind.borrowed when person != null => join(
+        'Borrowed from $person',
+      ),
       _ when person != null => join(person),
       _ => desc,
     };
@@ -107,8 +108,9 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final accounts = ref.watch(accountsProvider).value ?? const <Account>[];
-    final kind =
-        _type == TxnType.income ? CategoryKind.income : CategoryKind.expense;
+    final kind = _type == TxnType.income
+        ? CategoryKind.income
+        : CategoryKind.expense;
     final categories =
         ref.watch(categoriesProvider(kind)).value ?? const <Category>[];
 
@@ -116,9 +118,12 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
     if (accounts.isNotEmpty) {
       _accountId ??=
           _resolveAccount(widget.parsed?.accountHint, accounts) ??
-              accounts.first.id;
+          accounts.first.id;
       if (_type == TxnType.transfer) {
-        _toAccountId ??= _resolveAccount(widget.parsed?.toAccountHint, accounts);
+        _toAccountId ??= _resolveAccount(
+          widget.parsed?.toAccountHint,
+          accounts,
+        );
       }
     }
     if (!_categoryTouched && _categoryId == null && categories.isNotEmpty) {
@@ -160,8 +165,9 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
             TextField(
               controller: _amount,
               autofocus: widget.parsed == null,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               style: theme.textTheme.headlineMedium,
               textAlign: TextAlign.center,
               decoration: const InputDecoration(
@@ -268,7 +274,9 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
     }
 
     final now = DateTime.now();
-    await ref.read(appDatabaseProvider).addTransaction(
+    await ref
+        .read(appDatabaseProvider)
+        .addTransaction(
           TransactionsCompanion.insert(
             type: _type,
             amountPaise: paise,
@@ -302,9 +310,9 @@ class _Label extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(top: 4, bottom: 6),
-        child: Text(text, style: Theme.of(context).textTheme.labelLarge),
-      );
+    padding: const EdgeInsets.only(top: 4, bottom: 6),
+    child: Text(text, style: Theme.of(context).textTheme.labelLarge),
+  );
 }
 
 class _AccountChips extends ConsumerWidget {
@@ -446,7 +454,9 @@ Future<int?> showAddAccountDialog(BuildContext context, WidgetRef ref) {
               final n = name.text.trim();
               if (n.isEmpty) return;
               final db = ref.read(appDatabaseProvider);
-              final id = await db.into(db.accounts).insert(
+              final id = await db
+                  .into(db.accounts)
+                  .insert(
                     AccountsCompanion.insert(
                       name: n,
                       type: type,
@@ -466,17 +476,17 @@ Future<int?> showAddAccountDialog(BuildContext context, WidgetRef ref) {
 }
 
 String _accountTypeLabel(AccountType t) => switch (t) {
-      AccountType.cash => 'Cash',
-      AccountType.bank => 'Bank',
-      AccountType.wallet => 'Wallet / UPI',
-      AccountType.creditCard => 'Credit card',
-      AccountType.loan => 'Loan',
-    };
+  AccountType.cash => 'Cash',
+  AccountType.bank => 'Bank',
+  AccountType.wallet => 'Wallet / UPI',
+  AccountType.creditCard => 'Credit card',
+  AccountType.loan => 'Loan',
+};
 
 String _accountTypeIcon(AccountType t) => switch (t) {
-      AccountType.cash => 'payments',
-      AccountType.bank => 'account_balance',
-      AccountType.wallet => 'account_balance_wallet',
-      AccountType.creditCard => 'credit_card',
-      AccountType.loan => 'request_quote',
-    };
+  AccountType.cash => 'payments',
+  AccountType.bank => 'account_balance',
+  AccountType.wallet => 'account_balance_wallet',
+  AccountType.creditCard => 'credit_card',
+  AccountType.loan => 'request_quote',
+};

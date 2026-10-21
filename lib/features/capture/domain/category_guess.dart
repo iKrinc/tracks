@@ -64,8 +64,10 @@ final _wordSplit = RegExp(r'[^a-z0-9]+');
 /// Returns the name from [categoryNames] that best fits [description], or
 /// null. Tries the keyword table first, then whole words of category names.
 String? guessCategoryName(String description, Iterable<String> categoryNames) {
-  final words =
-      description.toLowerCase().split(_wordSplit).where((w) => w.isNotEmpty);
+  final words = description
+      .toLowerCase()
+      .split(_wordSplit)
+      .where((w) => w.isNotEmpty);
   if (words.isEmpty) return null;
   final byLower = {for (final n in categoryNames) n.toLowerCase(): n};
 

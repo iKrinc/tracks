@@ -85,30 +85,32 @@ class _MonthBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final totals =
-        totalsOf(txns.map((t) => (type: t.type, amountPaise: t.amountPaise)));
+    final totals = totalsOf(
+      txns.map((t) => (type: t.type, amountPaise: t.amountPaise)),
+    );
     final days = groupByDay(txns, (t) => t.occurredAt);
 
     return CustomScrollView(
       slivers: [
         SliverToBoxAdapter(child: _SummaryCard(totals: totals)),
         if (txns.isEmpty)
-          const SliverFillRemaining(
-            hasScrollBody: false,
-            child: _EmptyState(),
-          ),
+          const SliverFillRemaining(hasScrollBody: false, child: _EmptyState()),
         for (final (day, items) in days) ...[
-          SliverToBoxAdapter(child: _DayHeader(day: day, items: items)),
+          SliverToBoxAdapter(
+            child: _DayHeader(day: day, items: items),
+          ),
           SliverList.list(
             children: [
               for (final t in items)
                 _TxnTile(
                   txn: t,
                   account: accounts[t.accountId],
-                  toAccount:
-                      t.toAccountId == null ? null : accounts[t.toAccountId],
-                  category:
-                      t.categoryId == null ? null : categories[t.categoryId],
+                  toAccount: t.toAccountId == null
+                      ? null
+                      : accounts[t.toAccountId],
+                  category: t.categoryId == null
+                      ? null
+                      : categories[t.categoryId],
                 ),
             ],
           ),
@@ -128,19 +130,19 @@ class _SummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     Widget cell(String label, int paise, Color color) => Expanded(
-          child: Column(
-            children: [
-              Text(label, style: theme.textTheme.labelMedium),
-              const SizedBox(height: 4),
-              FittedBox(
-                child: Text(
-                  formatPaise(paise),
-                  style: theme.textTheme.titleMedium?.copyWith(color: color),
-                ),
-              ),
-            ],
+      child: Column(
+        children: [
+          Text(label, style: theme.textTheme.labelMedium),
+          const SizedBox(height: 4),
+          FittedBox(
+            child: Text(
+              formatPaise(paise),
+              style: theme.textTheme.titleMedium?.copyWith(color: color),
+            ),
           ),
-        );
+        ],
+      ),
+    );
 
     return Card(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
@@ -169,8 +171,9 @@ class _DayHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final t =
-        totalsOf(items.map((t) => (type: t.type, amountPaise: t.amountPaise)));
+    final t = totalsOf(
+      items.map((t) => (type: t.type, amountPaise: t.amountPaise)),
+    );
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
       child: Row(
@@ -233,8 +236,10 @@ class _TxnTile extends ConsumerWidget {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 24),
         color: theme.colorScheme.errorContainer,
-        child: Icon(Icons.delete_outline,
-            color: theme.colorScheme.onErrorContainer),
+        child: Icon(
+          Icons.delete_outline,
+          color: theme.colorScheme.onErrorContainer,
+        ),
       ),
       onDismissed: (_) async {
         final db = ref.read(appDatabaseProvider);
@@ -242,13 +247,15 @@ class _TxnTile extends ConsumerWidget {
         await db.deleteTransaction(txn.id);
         messenger
           ..hideCurrentSnackBar()
-          ..showSnackBar(SnackBar(
-            content: const Text('Deleted'),
-            action: SnackBarAction(
-              label: 'Undo',
-              onPressed: () => db.addTransaction(txn.toCompanion(true)),
+          ..showSnackBar(
+            SnackBar(
+              content: const Text('Deleted'),
+              action: SnackBarAction(
+                label: 'Undo',
+                onPressed: () => db.addTransaction(txn.toCompanion(true)),
+              ),
             ),
-          ));
+          );
       },
       child: ListTile(
         leading: CircleAvatar(
@@ -338,7 +345,11 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
       );
       return;
     }
-    final saved = await showConfirmSheet(context, parsed: parsed, rawText: text);
+    final saved = await showConfirmSheet(
+      context,
+      parsed: parsed,
+      rawText: text,
+    );
     if (saved == true) _ctl.clear();
   }
 

@@ -3,7 +3,12 @@ import 'package:tracks/data/tables.dart';
 /// A default category with optional subcategories. Icons are Material icon
 /// keys resolved in the UI (see `app/icons.dart`).
 class DefaultCategory {
-  const DefaultCategory(this.name, this.icon, this.color, [this.subs = const []]);
+  const DefaultCategory(
+    this.name,
+    this.icon,
+    this.color, [
+    this.subs = const [],
+  ]);
 
   final String name;
   final String icon;
@@ -21,10 +26,19 @@ const _peach = 0xFFFDE2C8;
 const _lemon = 0xFFFFF4B8;
 
 const defaultExpenseCategories = [
-  DefaultCategory('Food & Dining', 'restaurant', _peach,
-      ['Groceries', 'Restaurants', 'Snacks & Chai', 'Food delivery']),
-  DefaultCategory('Transport', 'directions_car', _blue,
-      ['Fuel', 'Cab & Auto', 'Metro & Bus', 'Train & Flight', 'Parking & Toll']),
+  DefaultCategory('Food & Dining', 'restaurant', _peach, [
+    'Groceries',
+    'Restaurants',
+    'Snacks & Chai',
+    'Food delivery',
+  ]),
+  DefaultCategory('Transport', 'directions_car', _blue, [
+    'Fuel',
+    'Cab & Auto',
+    'Metro & Bus',
+    'Train & Flight',
+    'Parking & Toll',
+  ]),
   DefaultCategory('Bills & Utilities', 'receipt_long', _sky, [
     'Electricity',
     'Mobile recharge',
@@ -34,16 +48,28 @@ const defaultExpenseCategories = [
     'DTH',
   ]),
   DefaultCategory('Rent', 'home', _lilac),
-  DefaultCategory('Shopping', 'shopping_bag', _pink,
-      ['Clothes', 'Electronics', 'Online shopping']),
-  DefaultCategory('Health', 'medical_services', _mint,
-      ['Medicines', 'Doctor', 'Insurance']),
+  DefaultCategory('Shopping', 'shopping_bag', _pink, [
+    'Clothes',
+    'Electronics',
+    'Online shopping',
+  ]),
+  DefaultCategory('Health', 'medical_services', _mint, [
+    'Medicines',
+    'Doctor',
+    'Insurance',
+  ]),
   DefaultCategory('Education', 'school', _blue, ['Fees', 'Books & Courses']),
-  DefaultCategory('Entertainment', 'movie', _lilac,
-      ['Movies', 'OTT subscriptions', 'Outings']),
+  DefaultCategory('Entertainment', 'movie', _lilac, [
+    'Movies',
+    'OTT subscriptions',
+    'Outings',
+  ]),
   DefaultCategory('Personal care', 'spa', _pink),
-  DefaultCategory('Household', 'cleaning_services', _sky,
-      ['House help', 'Repairs', 'Supplies']),
+  DefaultCategory('Household', 'cleaning_services', _sky, [
+    'House help',
+    'Repairs',
+    'Supplies',
+  ]),
   DefaultCategory('Family & Gifts', 'card_giftcard', _peach),
   DefaultCategory('Travel', 'luggage', _blue),
   DefaultCategory('EMI & Loans', 'account_balance', _lemon),

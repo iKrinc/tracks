@@ -15,24 +15,24 @@ class AppDatabase extends _$AppDatabase {
   int get schemaVersion => 1;
 
   static QueryExecutor _open() => driftDatabase(
-        name: 'tracks',
-        // Only used by the web preview build; Android uses a native file.
-        web: DriftWebOptions(
-          sqlite3Wasm: Uri.parse('sqlite3.wasm'),
-          driftWorker: Uri.parse('drift_worker.js'),
-        ),
-      );
+    name: 'tracks',
+    // Only used by the web preview build; Android uses a native file.
+    web: DriftWebOptions(
+      sqlite3Wasm: Uri.parse('sqlite3.wasm'),
+      driftWorker: Uri.parse('drift_worker.js'),
+    ),
+  );
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (m) async {
-          await m.createAll();
-          await _seedDefaults();
-        },
-        beforeOpen: (details) async {
-          await customStatement('PRAGMA foreign_keys = ON');
-        },
-      );
+    onCreate: (m) async {
+      await m.createAll();
+      await _seedDefaults();
+    },
+    beforeOpen: (details) async {
+      await customStatement('PRAGMA foreign_keys = ON');
+    },
+  );
 
   Future<void> _seedDefaults() async {
     await batch((b) {
@@ -88,10 +88,11 @@ class AppDatabase extends _$AppDatabase {
 
   // ---- Queries -----------------------------------------------------------
 
-  Stream<List<Account>> watchAccounts() => (select(accounts)
-        ..where((a) => a.archived.equals(false))
-        ..orderBy([(a) => OrderingTerm(expression: a.sortOrder)]))
-      .watch();
+  Stream<List<Account>> watchAccounts() =>
+      (select(accounts)
+            ..where((a) => a.archived.equals(false))
+            ..orderBy([(a) => OrderingTerm(expression: a.sortOrder)]))
+          .watch();
 
   Stream<List<Category>> watchCategories(CategoryKind kind) =>
       (select(categories)

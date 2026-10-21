@@ -8,10 +8,12 @@ void main() {
   late AppDatabase db;
 
   setUp(() {
-    db = AppDatabase(DatabaseConnection(
-      NativeDatabase.memory(),
-      closeStreamsSynchronously: true,
-    ));
+    db = AppDatabase(
+      DatabaseConnection(
+        NativeDatabase.memory(),
+        closeStreamsSynchronously: true,
+      ),
+    );
   });
   tearDown(() => db.close());
 
@@ -35,15 +37,15 @@ void main() {
   test('transactions store integer paise and filter by date range', () async {
     final cash = (await db.select(db.accounts).get()).single;
     Future<int> add(int paise, DateTime at) => db.addTransaction(
-          TransactionsCompanion.insert(
-            type: TxnType.expense,
-            amountPaise: paise,
-            accountId: cash.id,
-            occurredAt: at,
-            source: const Value(TxnSource.quickText),
-            rawSourceText: const Value('chai 20'),
-          ),
-        );
+      TransactionsCompanion.insert(
+        type: TxnType.expense,
+        amountPaise: paise,
+        accountId: cash.id,
+        occurredAt: at,
+        source: const Value(TxnSource.quickText),
+        rawSourceText: const Value('chai 20'),
+      ),
+    );
 
     await add(2000, DateTime(2026, 10, 1, 9));
     await add(12345678, DateTime(2026, 10, 31, 23, 59));
@@ -59,12 +61,14 @@ void main() {
 
   test('foreign keys are enforced', () async {
     expect(
-      () => db.addTransaction(TransactionsCompanion.insert(
-        type: TxnType.expense,
-        amountPaise: 100,
-        accountId: 999,
-        occurredAt: DateTime(2026),
-      )),
+      () => db.addTransaction(
+        TransactionsCompanion.insert(
+          type: TxnType.expense,
+          amountPaise: 100,
+          accountId: 999,
+          occurredAt: DateTime(2026),
+        ),
+      ),
       throwsA(isA<SqliteException>()),
     );
   });
