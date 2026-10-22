@@ -82,7 +82,9 @@ class MoreScreen extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
             child: Text(
               'Tracks keeps everything on this phone. No accounts, no ads, '
-              'no analytics, no internet access.',
+              'no analytics, and the app never goes online. If Android '
+              'backup is on for your Google account, your phone backs up '
+              'Tracks with your other apps, so a new phone gets it back.',
               style: theme.textTheme.bodySmall,
             ),
           ),

@@ -13,7 +13,10 @@ Owner: KRINC (Srinivas). This is a personal-first app that may be released later
 1. **Capture in under 3 seconds.** Share an SMS, share a screenshot, or type one line
    ("chai 20 gpay"). The app parses it and shows a confirm card. Forms are the fallback.
 2. **Local-first & private.** All data stays on device (SQLite). No ads, no analytics SDKs,
-   no network calls except optional, user-triggered backup.
+   no network calls except optional, user-triggered backup. *Owner's decision (2026-10-22):*
+   Android's own system backup stays ON (`allowBackup`, `res/xml/*backup*_rules.xml`), so a
+   new phone on the same Google account restores Tracks automatically. The app itself still
+   makes no network calls. Don't turn this off without asking.
 3. **Never lose data.** Export/import in open formats. Auto-backup file. Migrations tested.
 4. **Highly customizable.** Themes, home dashboard widgets, categories, quick-add buttons,
    number formats, start-of-month day — all user-configurable.

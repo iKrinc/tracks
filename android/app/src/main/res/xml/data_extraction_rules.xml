@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+: owner's decision (2026-10-22) to keep system backup on, so a
+     new phone on the same Google account restores Tracks automatically.
+     The database lives under files/app_flutter. Caches are skipped. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="file" path="."/>
+        <include domain="database" path="."/>
+        <include domain="sharedpref" path="."/>
+    </cloud-backup>
+    <device-transfer>
+        <include domain="file" path="."/>
+        <include domain="database" path="."/>
+        <include domain="sharedpref" path="."/>
+    </device-transfer>
+</data-extraction-rules>
