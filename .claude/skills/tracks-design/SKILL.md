@@ -60,6 +60,25 @@ Re-measure whenever a background or amount colour changes. Normal text needs **�
 ≥ 24 sp, or ≥ 18.66 sp bold, needs ≥ 3:1. Don't eyeball it: run the snippet in
 `checklist.md`.
 
+### Hero, charts, meters
+
+- **Hero card** (`lib/app/widgets/hero.dart`): leads each tab. It uses a gradient from
+  `TracksTokens.heroGradient`: sky → lilac in light, `#1E2A44` → `#33264A` in dark. Text uses
+  `heroInk` (≥ 8.8:1) or `heroMuted` (≥ 5.4:1). Green/pink text fails on lilac (3.4:1), so hero
+  amounts use ink, and direction is shown by a coloured arrow icon (3:1 is enough for icons)
+  plus the +/− sign. Figures use `AnimatedAmount`, a 350 ms count-up that respects reduce-motion.
+- **Charts** (fl_chart, following the dataviz skill):
+  - Two-series charts use categorical slots 1–2: `#2A78D6`/`#EB6834` in light,
+    `#3987E5`/`#D95926` in dark. Don't use the app's green/pink there; that pair fails CVD
+    separation (ΔE 3.6).
+  - A previous period is a dashed `outline` line.
+  - Part-to-whole is shown as ranked horizontal bars in one hue, with direct labels. No pie
+    or donut with more than 3 slices.
+  - Every chart has a legend for 2+ series, a tooltip, and a Semantics summary. Every
+    figure opens its transactions.
+- **Meters** (`lib/app/widgets/meter.dart`): one hue for the track and fill. Status always has
+  an icon plus words ("85% used", "Over by ₹500"), never colour alone.
+
 ### Type, space, shape
 
 - Font: system Roboto. Don't bundle custom fonts until Phase 4's theme editor exists.

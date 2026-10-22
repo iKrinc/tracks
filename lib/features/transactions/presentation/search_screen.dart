@@ -8,13 +8,35 @@ import 'package:tracks/features/transactions/presentation/txn_list.dart';
 
 /// Initial filters, e.g. from tapping a total ("honest numbers").
 class SearchArgs {
-  const SearchArgs({this.type, this.accountId, this.month});
+  const SearchArgs({
+    this.type,
+    this.accountId,
+    this.categoryId,
+    this.from,
+    this.to,
+    this.rangeLabel,
+  });
+
+  /// Whole calendar month.
+  SearchArgs.month(DateTime month, {this.type, this.accountId, this.categoryId})
+    : from = monthStart(month),
+      to = nextMonthStart(month),
+      rangeLabel = monthLabel(month);
+
+  /// Whole calendar year.
+  SearchArgs.year(int year, {this.type, this.accountId, this.categoryId})
+    : from = DateTime(year),
+      to = DateTime(year + 1),
+      rangeLabel = '$year';
 
   final TxnType? type;
   final int? accountId;
+  final int? categoryId;
 
-  /// Limit to this month (first day).
-  final DateTime? month;
+  /// `from <= date < to`; shown as a removable [rangeLabel] chip.
+  final DateTime? from;
+  final DateTime? to;
+  final String? rangeLabel;
 }
 
 class SearchScreen extends ConsumerStatefulWidget {
@@ -30,7 +52,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   final _query = TextEditingController();
   late TxnType? _type = widget.args.type;
   late int? _accountId = widget.args.accountId;
-  late DateTime? _month = widget.args.month;
+  late DateTime? _from = widget.args.from;
+  late DateTime? _to = widget.args.to;
+  late int? _categoryId = widget.args.categoryId;
   String? _resultsKey;
   late Stream<List<Transaction>> _results;
   List<Transaction>? _last;
@@ -56,17 +80,17 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     final theme = Theme.of(context);
     final lookup = watchTxnLookup(ref);
     final db = ref.watch(appDatabaseProvider);
-    final month = _month;
     // Re-query only when a filter changes, so typing doesn't flash a spinner.
-    final key = '${_query.text}|$_type|$_accountId|$month';
+    final key = '${_query.text}|$_type|$_accountId|$_categoryId|$_from|$_to';
     if (key != _resultsKey) {
       _resultsKey = key;
       _results = db.watchSearch(
         query: _query.text,
         type: _type,
         accountId: _accountId,
-        from: month,
-        to: month == null ? null : nextMonthStart(month),
+        categoryId: _categoryId,
+        from: _from,
+        to: _to,
       );
     }
     final results = _results;
@@ -91,10 +115,19 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               scrollDirection: Axis.horizontal,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
               children: [
-                if (month != null) ...[
+                if (_from != null) ...[
                   InputChip(
-                    label: Text(monthLabel(month)),
-                    onDeleted: () => setState(() => _month = null),
+                    label: Text(widget.args.rangeLabel ?? 'Date range'),
+                    onDeleted: () => setState(() => _from = _to = null),
+                  ),
+                  const SizedBox(width: 8),
+                ],
+                if (_categoryId != null) ...[
+                  InputChip(
+                    label: Text(
+                      lookup.categories[_categoryId]?.name ?? 'Category',
+                    ),
+                    onDeleted: () => setState(() => _categoryId = null),
                   ),
                   const SizedBox(width: 8),
                 ],

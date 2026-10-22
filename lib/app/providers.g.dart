@@ -243,7 +243,7 @@ final class SelectedMonthProvider
   }
 }
 
-String _$selectedMonthHash() => r'49b9eebff3df52a12301e91190ac2789700771a5';
+String _$selectedMonthHash() => r'3928b7288ef4984ae37786607e45178f62b8f5d7';
 
 abstract class _$SelectedMonth extends $Notifier<DateTime> {
   DateTime build();
@@ -457,3 +457,322 @@ final class SettingFamily extends $Family
   @override
   String toString() => r'settingProvider';
 }
+
+@ProviderFor(ViewMode)
+final viewModeProvider = ViewModeProvider._();
+
+final class ViewModeProvider extends $NotifierProvider<ViewMode, PeriodView> {
+  ViewModeProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'viewModeProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$viewModeHash();
+
+  @$internal
+  @override
+  ViewMode create() => ViewMode();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(PeriodView value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<PeriodView>(value),
+    );
+  }
+}
+
+String _$viewModeHash() => r'e974bd99f7a9480d0a7ae5dccd03cb3f1d4336a5';
+
+abstract class _$ViewMode extends $Notifier<PeriodView> {
+  PeriodView build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<PeriodView, PeriodView>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<PeriodView, PeriodView>,
+              PeriodView,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}
+
+/// All transactions as plain records, for period totals and reports.
+
+@ProviderFor(allDatedTxns)
+final allDatedTxnsProvider = AllDatedTxnsProvider._();
+
+/// All transactions as plain records, for period totals and reports.
+
+final class AllDatedTxnsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<DatedTxn>>,
+          List<DatedTxn>,
+          Stream<List<DatedTxn>>
+        >
+    with $FutureModifier<List<DatedTxn>>, $StreamProvider<List<DatedTxn>> {
+  /// All transactions as plain records, for period totals and reports.
+  AllDatedTxnsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'allDatedTxnsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$allDatedTxnsHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<List<DatedTxn>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<DatedTxn>> create(Ref ref) {
+    return allDatedTxns(ref);
+  }
+}
+
+String _$allDatedTxnsHash() => r'79a59e3d8f54476678f587a5fc2f96ca1b0b376b';
+
+/// Category id → parent id, for rolling subcategories up.
+
+@ProviderFor(categoryParents)
+final categoryParentsProvider = CategoryParentsProvider._();
+
+/// Category id → parent id, for rolling subcategories up.
+
+final class CategoryParentsProvider
+    extends $FunctionalProvider<Map<int, int?>, Map<int, int?>, Map<int, int?>>
+    with $Provider<Map<int, int?>> {
+  /// Category id → parent id, for rolling subcategories up.
+  CategoryParentsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'categoryParentsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$categoryParentsHash();
+
+  @$internal
+  @override
+  $ProviderElement<Map<int, int?>> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  Map<int, int?> create(Ref ref) {
+    return categoryParents(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Map<int, int?> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Map<int, int?>>(value),
+    );
+  }
+}
+
+String _$categoryParentsHash() => r'bef947e6735502a9039d1f97e03fd77c599c0782';
+
+@ProviderFor(budgets)
+final budgetsProvider = BudgetsProvider._();
+
+final class BudgetsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Budget>>,
+          List<Budget>,
+          Stream<List<Budget>>
+        >
+    with $FutureModifier<List<Budget>>, $StreamProvider<List<Budget>> {
+  BudgetsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'budgetsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$budgetsHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<List<Budget>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<Budget>> create(Ref ref) {
+    return budgets(ref);
+  }
+}
+
+String _$budgetsHash() => r'd7d2bd6d5c8ca2bd435474b67322f7a82c1b102a';
+
+/// Budgets measured against the current calendar month (not the month being
+/// browsed), overall first, then the tightest.
+
+@ProviderFor(budgetViews)
+final budgetViewsProvider = BudgetViewsProvider._();
+
+/// Budgets measured against the current calendar month (not the month being
+/// browsed), overall first, then the tightest.
+
+final class BudgetViewsProvider
+    extends
+        $FunctionalProvider<
+          List<BudgetView>,
+          List<BudgetView>,
+          List<BudgetView>
+        >
+    with $Provider<List<BudgetView>> {
+  /// Budgets measured against the current calendar month (not the month being
+  /// browsed), overall first, then the tightest.
+  BudgetViewsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'budgetViewsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$budgetViewsHash();
+
+  @$internal
+  @override
+  $ProviderElement<List<BudgetView>> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  List<BudgetView> create(Ref ref) {
+    return budgetViews(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(List<BudgetView> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<List<BudgetView>>(value),
+    );
+  }
+}
+
+String _$budgetViewsHash() => r'ec7394b6d2a6798bf50dc78d8f58568ceb1abda9';
+
+@ProviderFor(recurrings)
+final recurringsProvider = RecurringsProvider._();
+
+final class RecurringsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Recurring>>,
+          List<Recurring>,
+          Stream<List<Recurring>>
+        >
+    with $FutureModifier<List<Recurring>>, $StreamProvider<List<Recurring>> {
+  RecurringsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'recurringsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$recurringsHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<List<Recurring>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<Recurring>> create(Ref ref) {
+    return recurrings(ref);
+  }
+}
+
+String _$recurringsHash() => r'7e6a8b719d9ce4177a609a832b47c402a2a0a78c';
+
+/// Active recurring items by next due date, soonest first.
+
+@ProviderFor(dueItems)
+final dueItemsProvider = DueItemsProvider._();
+
+/// Active recurring items by next due date, soonest first.
+
+final class DueItemsProvider
+    extends $FunctionalProvider<List<DueItem>, List<DueItem>, List<DueItem>>
+    with $Provider<List<DueItem>> {
+  /// Active recurring items by next due date, soonest first.
+  DueItemsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'dueItemsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$dueItemsHash();
+
+  @$internal
+  @override
+  $ProviderElement<List<DueItem>> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  List<DueItem> create(Ref ref) {
+    return dueItems(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(List<DueItem> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<List<DueItem>>(value),
+    );
+  }
+}
+
+String _$dueItemsHash() => r'ad2d5376a4b311dcb758ca409197a28747568b48';

@@ -119,6 +119,15 @@ input (shared SMS text | shared image | quick-add text | pasted text)
 - Optional encrypted backup to a user-chosen location (Drive/own server) — user-triggered only
 - Optional on-device LLM for messy inputs
 
+### Status (2026-10-22)
+- **Phase 1 done**, except screenshot/OCR capture and category editing. Done: quick-add,
+  SMS share, accounts, Daily/Monthly/Yearly + calendar views, search, JSON backup/restore
+  (welcome screen and open-with), CSV export/import, app lock.
+- **Phase 2:** budgets and recurring bills/autopay are done (in-app "due soon" strip; no
+  notifications yet). Still to do: notification reminders with "mark paid", credit-card
+  cycles, debts/loans/EMIs.
+- **Phase 3 started:** Reports tab with month/year compare, pace line, category bars.
+
 ---
 
 ## Project structure

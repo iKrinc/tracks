@@ -2,6 +2,9 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:tracks/core/dates.dart';
 import 'package:tracks/data/app_database.dart';
 import 'package:tracks/features/accounts/domain/balances.dart';
+import 'package:tracks/features/budgets/domain/budget_math.dart';
+import 'package:tracks/features/recurring/domain/schedule.dart';
+import 'package:tracks/features/transactions/domain/summary.dart';
 
 part 'providers.g.dart';
 
@@ -33,6 +36,9 @@ class SelectedMonth extends _$SelectedMonth {
 
   void previous() => state = DateTime(state.year, state.month - 1);
   void next() => state = DateTime(state.year, state.month + 1);
+  void previousYear() => state = DateTime(state.year - 1, state.month);
+  void nextYear() => state = DateTime(state.year + 1, state.month);
+  void set(DateTime month) => state = monthStart(month);
 }
 
 @riverpod
@@ -61,3 +67,108 @@ Map<int, int> balances(Ref ref) {
 @riverpod
 Stream<String?> setting(Ref ref, String key) =>
     ref.watch(appDatabaseProvider).watchSetting(key);
+
+/// How the Transactions tab groups things.
+enum PeriodView { daily, monthly, yearly }
+
+@riverpod
+class ViewMode extends _$ViewMode {
+  @override
+  PeriodView build() => PeriodView.daily;
+
+  void set(PeriodView v) => state = v;
+}
+
+/// All transactions as plain records, for period totals and reports.
+@riverpod
+Stream<List<DatedTxn>> allDatedTxns(Ref ref) => ref
+    .watch(appDatabaseProvider)
+    .watchAllTransactions()
+    .map(
+      (rows) => [
+        for (final t in rows)
+          (
+            type: t.type,
+            amountPaise: t.amountPaise,
+            occurredAt: t.occurredAt,
+            categoryId: t.categoryId,
+          ),
+      ],
+    );
+
+/// Category id → parent id, for rolling subcategories up.
+@riverpod
+Map<int, int?> categoryParents(Ref ref) => {
+  for (final kind in CategoryKind.values)
+    for (final c in ref.watch(categoriesProvider(kind)).value ?? const [])
+      c.id: c.parentId,
+};
+
+@riverpod
+Stream<List<Budget>> budgets(Ref ref) =>
+    ref.watch(appDatabaseProvider).watchBudgets();
+
+typedef BudgetView = ({Budget budget, BudgetProgress progress});
+
+/// Budgets measured against the current calendar month (not the month being
+/// browsed), overall first, then the tightest.
+@riverpod
+List<BudgetView> budgetViews(Ref ref) {
+  final all = ref.watch(allDatedTxnsProvider).value ?? const <DatedTxn>[];
+  final parents = ref.watch(categoryParentsProvider);
+  final now = DateTime.now();
+  final prev = DateTime(now.year, now.month - 1);
+  final views = [
+    for (final b in ref.watch(budgetsProvider).value ?? const <Budget>[])
+      (
+        budget: b,
+        progress: budgetProgress(
+          limitPaise: b.amountPaise,
+          spentPaise: spentInMonth(all, now, b.categoryId, parentOf: parents),
+          rolloverPaise: b.rollover
+              ? rolloverFrom(
+                  limitPaise: b.amountPaise,
+                  spentPaise: spentInMonth(
+                    all,
+                    prev,
+                    b.categoryId,
+                    parentOf: parents,
+                  ),
+                )
+              : 0,
+        ),
+      ),
+  ];
+  views.sort((a, b) {
+    if (a.budget.categoryId == null) return -1;
+    if (b.budget.categoryId == null) return 1;
+    return b.progress.percent.compareTo(a.progress.percent);
+  });
+  return views;
+}
+
+@riverpod
+Stream<List<Recurring>> recurrings(Ref ref) =>
+    ref.watch(appDatabaseProvider).watchRecurrings();
+
+typedef DueItem = ({Recurring item, DateTime due, DueStatus status});
+
+/// Active recurring items by next due date, soonest first.
+@riverpod
+List<DueItem> dueItems(Ref ref) {
+  final now = DateTime.now();
+  final items = [
+    for (final r in ref.watch(recurringsProvider).value ?? const <Recurring>[])
+      if (r.status == RecurringStatus.active)
+        () {
+          final due = nextDue(
+            start: r.startDate,
+            unit: r.unit,
+            interval: r.interval,
+            lastPaid: r.lastPaid,
+          );
+          return (item: r, due: due, status: dueStatus(due, now));
+        }(),
+  ]..sort((a, b) => a.due.compareTo(b.due));
+  return items;
+}

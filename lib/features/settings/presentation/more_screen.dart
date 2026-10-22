@@ -41,12 +41,28 @@ class MoreScreen extends ConsumerWidget {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+            child: Text('Plan', style: theme.textTheme.titleSmall),
+          ),
+          ListTile(
+            leading: const Icon(Icons.event_repeat),
+            title: const Text('Bills & autopay'),
+            subtitle: const Text('Rent, EMIs, subscriptions, SIPs'),
+            onTap: () => context.push('/bills'),
+          ),
+          ListTile(
+            leading: const Icon(Icons.savings_outlined),
+            title: const Text('Budgets'),
+            subtitle: const Text('Monthly limits with a daily allowance'),
+            onTap: () => context.push('/budgets'),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
             child: Text('Your data', style: theme.textTheme.titleSmall),
           ),
           ListTile(
             leading: const Icon(Icons.save_alt),
-            title: const Text('Backup & export'),
-            subtitle: const Text('JSON backup, CSV export and import'),
+            title: const Text('Backup & restore'),
+            subtitle: const Text('Move to a new phone, export CSV, import'),
             onTap: () => context.push('/backup'),
           ),
           Padding(

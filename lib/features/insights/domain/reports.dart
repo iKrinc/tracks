@@ -32,21 +32,20 @@ List<CategorySlice> categoryBreakdown(
   return slices;
 }
 
-/// Running expense total for each day of [month]: index 0 is day 1. For the
-/// current month, stops at [today] so the line doesn't run flat into the
-/// future.
+/// Running total of [type] (expense by default) for each day of [month]:
+/// index 0 is day 1. For the current month, stops at [today] so the line
+/// doesn't run flat into the future.
 List<int> cumulativeSpend(
   Iterable<DatedTxn> txns,
   DateTime month, {
   DateTime? today,
+  TxnType type = TxnType.expense,
 }) {
   final days = DateTime(month.year, month.month + 1, 0).day;
   final perDay = List.filled(days, 0);
   for (final t in txns) {
     final d = t.occurredAt;
-    if (t.type == TxnType.expense &&
-        d.year == month.year &&
-        d.month == month.month) {
+    if (t.type == type && d.year == month.year && d.month == month.month) {
       perDay[d.day - 1] += t.amountPaise;
     }
   }
