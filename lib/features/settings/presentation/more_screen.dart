@@ -55,6 +55,12 @@ class MoreScreen extends ConsumerWidget {
             subtitle: const Text('Monthly limits with a daily allowance'),
             onTap: () => context.push('/budgets'),
           ),
+          ListTile(
+            leading: const Icon(Icons.category_outlined),
+            title: const Text('Categories'),
+            subtitle: const Text('Add, rename, recolour, reorder'),
+            onTap: () => context.push('/categories'),
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
             child: Text('Your data', style: theme.textTheme.titleSmall),

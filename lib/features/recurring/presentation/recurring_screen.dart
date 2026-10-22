@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +12,7 @@ import 'package:tracks/core/money.dart';
 import 'package:tracks/data/app_database.dart';
 import 'package:tracks/features/capture/domain/capture_draft.dart';
 import 'package:tracks/features/capture/presentation/confirm_sheet.dart';
+import 'package:tracks/features/recurring/data/reminder_service.dart';
 import 'package:tracks/features/recurring/domain/schedule.dart';
 
 const autopayLabels = {
@@ -183,7 +186,9 @@ class _DueTile extends ConsumerWidget {
         item.status == DueStatus.overdue || item.status == DueStatus.today;
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: category == null ? Palette.sky : Color(category.color),
+        backgroundColor: category == null
+            ? Palette.sand
+            : Color(category.color),
         foregroundColor: Colors.black87,
         child: Icon(iconFor(category?.icon ?? 'receipt_long'), size: 20),
       ),
@@ -258,20 +263,7 @@ Future<void> _showActions(BuildContext context, WidgetRef ref, DueItem i) {
             subtitle: const Text('Log it as a transaction'),
             onTap: () async {
               Navigator.pop(sheet);
-              await showConfirmSheet(
-                context,
-                draft: CaptureDraft(
-                  type: r.type,
-                  source: TxnSource.recurring,
-                  amountPaise: r.amountPaise,
-                  note: r.name,
-                  date: dateOnly(DateTime.now()),
-                  accountId: r.accountId,
-                  categoryId: r.categoryId,
-                  linkedRecurringId: r.id,
-                  tags: r.autopay == AutopayKind.none ? '' : 'autopay',
-                ),
-              );
+              await openMarkPaid(context, r);
             },
           ),
           ListTile(
@@ -297,6 +289,24 @@ Future<void> _showActions(BuildContext context, WidgetRef ref, DueItem i) {
     ),
   );
 }
+
+/// Logs a payment for [r] through a pre-filled Confirm Card; saving moves
+/// the bill to its next due date. Used by the list and by reminders.
+Future<bool?> openMarkPaid(BuildContext context, Recurring r) =>
+    showConfirmSheet(
+      context,
+      draft: CaptureDraft(
+        type: r.type,
+        source: TxnSource.recurring,
+        amountPaise: r.amountPaise,
+        note: r.name,
+        date: dateOnly(DateTime.now()),
+        accountId: r.accountId,
+        categoryId: r.categoryId,
+        linkedRecurringId: r.id,
+        tags: r.autopay == AutopayKind.none ? '' : 'autopay',
+      ),
+    );
 
 Future<void> showRecurringSheet(BuildContext context, {Recurring? item}) =>
     showModalBottomSheet(
@@ -384,6 +394,8 @@ class _RecurringSheetState extends ConsumerState<_RecurringSheet> {
             note: Value(r?.note ?? ''),
           ),
         );
+    // Asks once (Android 13+), right when the reason is obvious.
+    unawaited(ReminderService.instance.requestPermission());
     if (mounted) Navigator.pop(context);
   }
 

@@ -5,6 +5,7 @@ import 'package:tracks/features/backup/presentation/backup_screen.dart';
 import 'package:tracks/features/budgets/presentation/budgets_screen.dart';
 import 'package:tracks/features/insights/presentation/reports_screen.dart';
 import 'package:tracks/features/recurring/presentation/recurring_screen.dart';
+import 'package:tracks/features/settings/presentation/categories_screen.dart';
 import 'package:tracks/features/settings/presentation/more_screen.dart';
 import 'package:tracks/features/settings/presentation/welcome_screen.dart';
 import 'package:tracks/features/transactions/presentation/home_screen.dart';
@@ -50,5 +51,6 @@ final appRouter = GoRouter(
     GoRoute(path: '/welcome', builder: (_, _) => const WelcomeScreen()),
     GoRoute(path: '/budgets', builder: (_, _) => const BudgetsScreen()),
     GoRoute(path: '/bills', builder: (_, _) => const RecurringScreen()),
+    GoRoute(path: '/categories', builder: (_, _) => const CategoriesScreen()),
   ],
 );

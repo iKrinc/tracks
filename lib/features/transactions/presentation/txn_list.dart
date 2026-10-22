@@ -170,7 +170,7 @@ class TxnTile extends ConsumerWidget {
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: category == null
-              ? Palette.sky
+              ? Palette.sand
               : Color(category.color),
           foregroundColor: Colors.black87,
           child: Icon(

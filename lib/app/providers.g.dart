@@ -776,3 +776,132 @@ final class DueItemsProvider
 }
 
 String _$dueItemsHash() => r'ad2d5376a4b311dcb758ca409197a28747568b48';
+
+/// Reminder notifications to schedule for active bills.
+
+@ProviderFor(reminderPlan)
+final reminderPlanProvider = ReminderPlanProvider._();
+
+/// Reminder notifications to schedule for active bills.
+
+final class ReminderPlanProvider
+    extends
+        $FunctionalProvider<
+          List<PlannedReminder>,
+          List<PlannedReminder>,
+          List<PlannedReminder>
+        >
+    with $Provider<List<PlannedReminder>> {
+  /// Reminder notifications to schedule for active bills.
+  ReminderPlanProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'reminderPlanProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$reminderPlanHash();
+
+  @$internal
+  @override
+  $ProviderElement<List<PlannedReminder>> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  List<PlannedReminder> create(Ref ref) {
+    return reminderPlan(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(List<PlannedReminder> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<List<PlannedReminder>>(value),
+    );
+  }
+}
+
+String _$reminderPlanHash() => r'0f6f18f1fb0b9aab3b3c8e4ddc8e7519b327f008';
+
+@ProviderFor(accountTxns)
+final accountTxnsProvider = AccountTxnsFamily._();
+
+final class AccountTxnsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Transaction>>,
+          List<Transaction>,
+          Stream<List<Transaction>>
+        >
+    with
+        $FutureModifier<List<Transaction>>,
+        $StreamProvider<List<Transaction>> {
+  AccountTxnsProvider._({
+    required AccountTxnsFamily super.from,
+    required int super.argument,
+  }) : super(
+         retry: null,
+         name: r'accountTxnsProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$accountTxnsHash();
+
+  @override
+  String toString() {
+    return r'accountTxnsProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<List<Transaction>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<Transaction>> create(Ref ref) {
+    final argument = this.argument as int;
+    return accountTxns(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is AccountTxnsProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$accountTxnsHash() => r'78cc01edae3ef1bdf11a2162fdbeeb9ba0ff1cad';
+
+final class AccountTxnsFamily extends $Family
+    with $FunctionalFamilyOverride<Stream<List<Transaction>>, int> {
+  AccountTxnsFamily._()
+    : super(
+        retry: null,
+        name: r'accountTxnsProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  AccountTxnsProvider call(int accountId) =>
+      AccountTxnsProvider._(argument: accountId, from: this);
+
+  @override
+  String toString() => r'accountTxnsProvider';
+}

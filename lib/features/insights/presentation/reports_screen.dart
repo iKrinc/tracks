@@ -563,7 +563,7 @@ class _CategoryCard extends StatelessWidget {
                           radius: 18,
                           backgroundColor: Color(
                             categories[s.categoryId]?.color ??
-                                Palette.sky.toARGB32(),
+                                Palette.sand.toARGB32(),
                           ),
                           foregroundColor: Colors.black87,
                           child: Icon(

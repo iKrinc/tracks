@@ -8,6 +8,7 @@ import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:tracks/app/providers.dart';
 import 'package:tracks/data/app_database.dart';
 import 'package:tracks/features/backup/presentation/backup_actions.dart';
+import 'package:tracks/features/capture/data/ocr.dart';
 import 'package:tracks/features/capture/domain/capture_draft.dart';
 import 'package:tracks/features/capture/presentation/confirm_sheet.dart';
 
@@ -115,17 +116,30 @@ class _ShareIntakeState extends ConsumerState<ShareIntake> {
         .join('\n')
         .trim();
     if (text.isEmpty) {
-      if (files.isNotEmpty && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
+      // A payment screenshot: read it on-device, then parse like a receipt.
+      final image = files
+          .where((f) => f.type == SharedMediaType.image)
+          .firstOrNull;
+      if (image == null || !mounted) return;
+      final messenger = ScaffoldMessenger.of(context)
+        ..showSnackBar(
           const SnackBar(
-            content: Text(
-              'Images aren'
-              "'"
-              't supported yet. Share the SMS text instead.',
-            ),
+            content: Text('Reading the screenshot…'),
+            duration: Duration(seconds: 2),
           ),
         );
+      String ocr;
+      try {
+        ocr = await readTextFromImage(image.path);
+      } on Exception {
+        messenger.showSnackBar(
+          const SnackBar(content: Text("Couldn't read that image")),
+        );
+        return;
       }
+      if (!mounted) return;
+      messenger.hideCurrentSnackBar();
+      await presentCapture(context, captureFromScreenshotText(ocr));
       return;
     }
     // Accounts may still be loading on a cold start.

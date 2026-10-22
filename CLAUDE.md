@@ -115,21 +115,22 @@ input (shared SMS text | shared image | quick-add text | pasted text)
 - XLSX export
 
 ### Phase 4 — Customise & polish
-- Theme editor (colors, font size, density, light/dark), default theme uses a soft palette:
-  `#cbf0f8`, `#aecbfa`, `#d7aefb`, `#fdcfe8` — avoid harsh bright or very dark shades
+- Theme editor (colors, font size, density, light/dark). *Owner's decision (2026-10-23):* no
+  typical blue/purple. The default is the warm "marigold & chai" palette: cream paper
+  `#FBF6EC`, espresso ink `#221C15`, marigold→coral hero `#F7C35F`→`#F29E7A`, warm pastel
+  fills (sand, sage, clay, blush, jade). Exact tokens are in `lib/app/theme.dart`.
 - Rearrangeable home dashboard widgets
 - Android home-screen widget for quick add
 - Optional encrypted backup to a user-chosen location (Drive/own server) — user-triggered only
 - Optional on-device LLM for messy inputs
 
-### Status (2026-10-22)
-- **Phase 1 done**, except screenshot/OCR capture and category editing. Done: quick-add,
-  SMS share, accounts, Daily/Monthly/Yearly + calendar views, search, JSON backup/restore
-  (welcome screen and open-with), CSV export/import, app lock.
-- **Phase 2:** budgets and recurring bills/autopay are done (in-app "due soon" strip; no
-  notifications yet). Still to do: notification reminders with "mark paid", credit-card
-  cycles, debts/loans/EMIs.
-- **Phase 3 started:** Reports tab with month/year compare, pace line, category bars.
+### Status (2026-10-23), see `docs/how-tracks-works.md`
+- **Phase 1 done:** quick-add, SMS and screenshot (on-device OCR) share, accounts,
+  categories editor, Daily/Monthly/Yearly + calendar, search, backup/restore/CSV, app lock.
+- **Phase 2 done:** bills/autopay with notification reminders, budgets, credit cards
+  (cycle, due, utilisation), loans and IOUs as accounts moved by transfers.
+- **Phase 3 started:** Reports tab. Next: rules learned from corrections, EMI interest split,
+  notification-listener capture, cash-flow forecast.
 
 ---
 

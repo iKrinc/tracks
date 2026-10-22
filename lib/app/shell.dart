@@ -1,8 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tracks/app/providers.dart';
+import 'package:tracks/features/accounts/presentation/account_detail_sheet.dart';
 import 'package:tracks/features/capture/presentation/share_intake.dart';
+import 'package:tracks/features/recurring/domain/reminder_plan.dart';
+import 'package:tracks/features/recurring/data/reminder_service.dart';
+import 'package:tracks/features/recurring/presentation/recurring_screen.dart';
 import 'package:tracks/features/settings/presentation/welcome_screen.dart';
 
 /// Bottom navigation around the tabs. Share intake lives here so an SMS or
@@ -17,10 +23,43 @@ class AppShell extends ConsumerStatefulWidget {
 }
 
 class _AppShellState extends ConsumerState<AppShell> {
+  StreamSubscription<int>? _reminderTaps;
+
   @override
   void initState() {
     super.initState();
     _maybeWelcome();
+    final reminders = ReminderService.instance;
+    reminders.init();
+    _reminderTaps = reminders.taps.listen(_openBill);
+    // Keep scheduled reminders in step with bills; sync() is a no-op when
+    // the plan hasn't changed.
+    ref.listenManual(
+      reminderPlanProvider,
+      (_, plan) => reminders.sync(plan),
+      fireImmediately: true,
+    );
+  }
+
+  @override
+  void dispose() {
+    _reminderTaps?.cancel();
+    super.dispose();
+  }
+
+  /// A reminder (or its "Mark paid" button) was tapped.
+  Future<void> _openBill(int id) async {
+    if (id >= cardReminderIdBase) {
+      final accounts = await ref.read(accountsProvider.future);
+      final card = accounts
+          .where((a) => a.id == id - cardReminderIdBase)
+          .firstOrNull;
+      if (card != null && mounted) await showAccountDetail(context, card);
+      return;
+    }
+    final bills = await ref.read(recurringsProvider.future);
+    final bill = bills.where((b) => b.id == id).firstOrNull;
+    if (bill != null && mounted) await openMarkPaid(context, bill);
   }
 
   /// First launch with an empty database: offer restore before anything.

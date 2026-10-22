@@ -36,25 +36,26 @@ The tokens live in `lib/app/theme.dart` (`Palette`, `buildTheme`). Widgets read 
 `Theme.of(context)`, never as hex literals. The only exceptions are category/account colours
 stored in the database.
 
-### Palette (from CLAUDE.md, no harsh brights, no near-blacks as fills)
+### Palette: "Marigold & chai" (owner's choice, no blue/purple)
 
-| Token | Hex | Use |
-|---|---|---|
-| sky | `#CBF0F8` | light: summary/secondary container |
-| blue | `#AECBFA` | seed colour; light primary container |
-| lilac | `#D7AEFB` | light tertiary container, accents |
-| pink | `#FDCFE8` | category fills, gentle highlights |
-| mint / peach / lemon | `#CCF2DD` `#FDE2C8` `#FFF4B8` | extra category fills only |
+| Token | Light | Dark | Use |
+|---|---|---|---|
+| surface | `#FBF6EC` cream | `#16120E` | page |
+| surfaceContainerLow / Container | `#F5EEE1` / `#EFE6D5` | `#1E1914` / `#261F18` | cards, inputs |
+| primary | `#2B2118` espresso | `#F7C35F` marigold | buttons, selected segment, FAB |
+| primaryContainer | `#FBE3A8` | `#4A3A1C` | nav indicator, selected chips |
+| tertiaryContainer | `#F8D2C2` coral | `#4A2A20` | warning banners |
+| hero gradient | `#F7C35F` → `#F29E7A` | `#3A2A1E` → `#183A31` | hero cards |
+| fills | sand, marigold, butter, coral, blush, clay, sage, jade (`Palette`) | same | categories, accounts (dark ink) |
 
-Pastels are **fills, never text**. On white they measure 1.2–1.9:1 contrast. On a pastel fill,
-use dark ink (`#1F1F1F` measures 8.9–13.6:1). Never put white text on a pastel (1.65:1).
+Fills are **fills, never text**. Put dark ink on them.
 
 ### Amount colours (measured WCAG contrast)
 
 | Token | Light | Dark |
 |---|---|---|
-| income | `#276B4E` (6.4:1 white, 5.3:1 sky) | `#8FD8B4` (11.2:1 bg, 5.8:1 card) |
-| expense | `#9E3F5E` (6.3:1 white, 5.2:1 sky) | `#F4A7C0` (9.9:1 bg, 5.1:1 card) |
+| income | `#1E6B4F` (6.0:1 cream, 5.4:1 card) | `#8FD3B0` (10.8:1 bg, 9.4:1 card) |
+| expense | `#A63A2B` (6.0:1 cream, 5.2:1 card) | `#F2A08A` (9.0:1 bg, 7.9:1 card) |
 
 Re-measure whenever a background or amount colour changes. Normal text needs **≥ 4.5:1**; text
 ≥ 24 sp, or ≥ 18.66 sp bold, needs ≥ 3:1. Don't eyeball it: run the snippet in
@@ -63,14 +64,14 @@ Re-measure whenever a background or amount colour changes. Normal text needs **�
 ### Hero, charts, meters
 
 - **Hero card** (`lib/app/widgets/hero.dart`): leads each tab. It uses a gradient from
-  `TracksTokens.heroGradient`: sky → lilac in light, `#1E2A44` → `#33264A` in dark. Text uses
-  `heroInk` (≥ 8.8:1) or `heroMuted` (≥ 5.4:1). Green/pink text fails on lilac (3.4:1), so hero
+  `TracksTokens.heroGradient`: marigold → coral in light, cocoa → forest in dark. Text uses
+  `heroInk` (≥ 8:1) or `heroMuted` (≥ 4.8:1). Coloured amount text is weak on coral, so hero
   amounts use ink, and direction is shown by a coloured arrow icon (3:1 is enough for icons)
   plus the +/− sign. Figures use `AnimatedAmount`, a 350 ms count-up that respects reduce-motion.
 - **Charts** (fl_chart, following the dataviz skill):
-  - Two-series charts use categorical slots 1–2: `#2A78D6`/`#EB6834` in light,
-    `#3987E5`/`#D95926` in dark. Don't use the app's green/pink there; that pair fails CVD
-    separation (ΔE 3.6).
+  - Two-series charts use `TracksTokens.seriesA`/`seriesB`: jade `#1B8A72` + saffron `#D4672A`
+    in light, `#239A7F` + `#D9692C` in dark. Both pairs pass the dataviz validator. Don't use the
+    app's green/red there; that pair fails CVD separation (ΔE 3.6).
   - A previous period is a dashed `outline` line.
   - Part-to-whole is shown as ranked horizontal bars in one hue, with direct labels. No pie
     or donut with more than 3 slices.

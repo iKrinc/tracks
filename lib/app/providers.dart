@@ -2,7 +2,9 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:tracks/core/dates.dart';
 import 'package:tracks/data/app_database.dart';
 import 'package:tracks/features/accounts/domain/balances.dart';
+import 'package:tracks/features/accounts/domain/credit_card.dart';
 import 'package:tracks/features/budgets/domain/budget_math.dart';
+import 'package:tracks/features/recurring/domain/reminder_plan.dart';
 import 'package:tracks/features/recurring/domain/schedule.dart';
 import 'package:tracks/features/transactions/domain/summary.dart';
 
@@ -172,3 +174,42 @@ List<DueItem> dueItems(Ref ref) {
   ]..sort((a, b) => a.due.compareTo(b.due));
   return items;
 }
+
+/// Reminder notifications to schedule: active bills, plus each credit
+/// card's due date (ids offset so they never clash with bill ids).
+@riverpod
+List<PlannedReminder> reminderPlan(Ref ref) => planReminders([
+  for (final a in ref.watch(accountsProvider).value ?? const <Account>[])
+    if (a.type == AccountType.creditCard &&
+        a.statementDay != null &&
+        a.dueDay != null)
+      (
+        id: cardReminderIdBase + a.id,
+        name: '${a.name} bill',
+        amountPaise: 0,
+        variableAmount: true,
+        type: TxnType.expense,
+        due: cardCycle(
+          statementDay: a.statementDay!,
+          dueDay: a.dueDay!,
+          today: DateTime.now(),
+        ).due,
+        daysBefore: 3,
+        autopay: AutopayKind.none,
+      ),
+  for (final d in ref.watch(dueItemsProvider))
+    (
+      id: d.item.id,
+      name: d.item.name,
+      amountPaise: d.item.amountPaise,
+      variableAmount: d.item.variableAmount,
+      type: d.item.type,
+      due: d.due,
+      daysBefore: d.item.remindDaysBefore,
+      autopay: d.item.autopay,
+    ),
+], DateTime.now());
+
+@riverpod
+Stream<List<Transaction>> accountTxns(Ref ref, int accountId) =>
+    ref.watch(appDatabaseProvider).watchAccountTxns(accountId);

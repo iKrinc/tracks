@@ -8,6 +8,8 @@ import 'package:tracks/app/theme.dart';
 import 'package:tracks/core/money.dart';
 import 'package:tracks/data/app_database.dart';
 import 'package:tracks/features/accounts/domain/balances.dart';
+import 'package:tracks/features/accounts/domain/loan.dart';
+import 'package:tracks/features/accounts/presentation/account_detail_sheet.dart';
 import 'package:tracks/features/transactions/presentation/search_screen.dart';
 
 const accountTypeLabels = {
@@ -15,7 +17,8 @@ const accountTypeLabels = {
   AccountType.bank: 'Bank',
   AccountType.wallet: 'Wallet / UPI',
   AccountType.creditCard: 'Credit card',
-  AccountType.loan: 'Loan',
+  AccountType.loan: 'Loans & money I owe',
+  AccountType.lent: 'People who owe me',
 };
 
 const accountTypeIcons = {
@@ -24,6 +27,7 @@ const accountTypeIcons = {
   AccountType.wallet: 'account_balance_wallet',
   AccountType.creditCard: 'credit_card',
   AccountType.loan: 'request_quote',
+  AccountType.lent: 'person',
 };
 
 class AccountsScreen extends ConsumerWidget {
@@ -71,7 +75,9 @@ class AccountsScreen extends ConsumerWidget {
         ),
       ),
       // Honest numbers: a balance opens its transactions.
-      onTap: () => context.push('/search', extra: SearchArgs(accountId: a.id)),
+      onTap: () => hasDetail(a)
+          ? showAccountDetail(context, a)
+          : context.push('/search', extra: SearchArgs(accountId: a.id)),
       onLongPress: () => showAccountSheet(context, account: a),
     );
 
@@ -159,7 +165,12 @@ class _AccountSheetState extends ConsumerState<_AccountSheet> {
     text: widget.account == null
         ? ''
         : formatPaise(
-            widget.account!.openingBalancePaise,
+            // Cards and loans show what's owed as a positive number.
+            switch (widget.account!.type) {
+              AccountType.creditCard ||
+              AccountType.loan => widget.account!.openingBalancePaise.abs(),
+              _ => widget.account!.openingBalancePaise,
+            },
             symbol: false,
             hideZeroPaise: true,
           ),
@@ -170,12 +181,81 @@ class _AccountSheetState extends ConsumerState<_AccountSheet> {
   late AccountType _type = widget.account?.type ?? AccountType.bank;
   String? _error;
 
+  // Card and loan fields.
+  static String _rupees(int? p) =>
+      p == null ? '' : formatPaise(p, symbol: false, hideZeroPaise: true);
+  late final _limit = TextEditingController(
+    text: _rupees(widget.account?.creditLimitPaise),
+  );
+  late final _statementDay = TextEditingController(
+    text: widget.account?.statementDay?.toString() ?? '',
+  );
+  late final _dueDay = TextEditingController(
+    text: widget.account?.dueDay?.toString() ?? '',
+  );
+  late final _principal = TextEditingController(
+    text: _rupees(widget.account?.principalPaise),
+  );
+  late final _rate = TextEditingController(
+    text: widget.account?.interestRateBp == null
+        ? ''
+        : (widget.account!.interestRateBp! / 100).toString(),
+  );
+  late final _emi = TextEditingController(
+    text: _rupees(widget.account?.emiPaise),
+  );
+  late final _tenure = TextEditingController(
+    text: widget.account?.tenureMonths?.toString() ?? '',
+  );
+
+  bool get _isCard => _type == AccountType.creditCard;
+  bool get _isDebt => _type == AccountType.loan || _type == AccountType.lent;
+
   @override
   void dispose() {
-    _name.dispose();
-    _opening.dispose();
-    _hints.dispose();
+    for (final c in [
+      _name,
+      _opening,
+      _hints,
+      _limit,
+      _statementDay,
+      _dueDay,
+      _principal,
+      _rate,
+      _emi,
+      _tenure,
+    ]) {
+      c.dispose();
+    }
     super.dispose();
+  }
+
+  /// Rate as typed ("9.5") → basis points (950), without touching double
+  /// for money: only the percentage string is parsed.
+  static int? _rateBp(String text) {
+    final paise = parseRupeesToPaise(text.trim());
+    return paise; // "9.5" → 950: same two-decimal shape as rupees.
+  }
+
+  static int? _day(String text) {
+    final d = int.tryParse(text.trim());
+    return d != null && d >= 1 && d <= 31 ? d : null;
+  }
+
+  void _fillEmi() {
+    final p = parseRupeesToPaise(_principal.text);
+    final months = int.tryParse(_tenure.text.trim());
+    final rate = _rateBp(_rate.text) ?? 0;
+    if (p == null || months == null || months <= 0) {
+      setState(() => _error = 'Enter amount and tenure to work out the EMI');
+      return;
+    }
+    setState(() {
+      _error = null;
+      _emi.text = _rupees(
+        emiPaise(principalPaise: p, rateBp: rate, months: months),
+      );
+    });
   }
 
   /// [archive] true archives, false restores, null keeps the current state.
@@ -185,14 +265,24 @@ class _AccountSheetState extends ConsumerState<_AccountSheet> {
       setState(() => _error = 'Give the account a name');
       return;
     }
-    // Allow a leading minus for card/loan dues.
+    // Cards and loans: "outstanding / still owed" is typed as a positive
+    // number and stored as a negative balance. Lent: positive (owed to you).
+    // Other accounts allow a leading minus.
     final raw = _opening.text.trim();
-    final negative = raw.startsWith('-') || raw.startsWith('−');
-    final opening = raw.isEmpty
-        ? 0
-        : parseRupeesToPaise(negative ? raw.substring(1) : raw);
-    if (opening == null) {
-      setState(() => _error = 'Opening balance should be an amount');
+    final typedNegative = raw.startsWith('-') || raw.startsWith('−');
+    final amount = raw.isEmpty
+        ? (_isDebt ? parseRupeesToPaise(_principal.text) ?? 0 : 0)
+        : parseRupeesToPaise(typedNegative ? raw.substring(1) : raw);
+    if (amount == null) {
+      setState(() => _error = 'That amount needs to be a number');
+      return;
+    }
+    final owes = _isCard || _type == AccountType.loan;
+    final opening = owes || typedNegative ? -amount : amount;
+    if (_isCard &&
+        (_day(_statementDay.text) == null || _day(_dueDay.text) == null) &&
+        (_statementDay.text.isNotEmpty || _dueDay.text.isNotEmpty)) {
+      setState(() => _error = 'Statement and due days are 1 to 31');
       return;
     }
     final hints = _hints.text
@@ -209,12 +299,25 @@ class _AccountSheetState extends ConsumerState<_AccountSheet> {
             id: a == null ? const Value.absent() : Value(a.id),
             name: Value(name),
             type: Value(_type),
-            openingBalancePaise: Value(negative ? -opening : opening),
-            color: Value(a?.color ?? Palette.blue.toARGB32()),
+            openingBalancePaise: Value(opening),
+            color: Value(a?.color ?? Palette.marigoldSoft.toARGB32()),
             icon: Value(accountTypeIcons[_type]!),
             matchHints: Value(hints),
             sortOrder: Value(a?.sortOrder ?? 0),
             archived: Value(archive ?? a?.archived ?? false),
+            creditLimitPaise: Value(
+              _isCard ? parseRupeesToPaise(_limit.text) : null,
+            ),
+            statementDay: Value(_isCard ? _day(_statementDay.text) : null),
+            dueDay: Value(_isCard ? _day(_dueDay.text) : null),
+            principalPaise: Value(
+              _isDebt ? parseRupeesToPaise(_principal.text) : null,
+            ),
+            interestRateBp: Value(_isDebt ? _rateBp(_rate.text) : null),
+            emiPaise: Value(_isDebt ? parseRupeesToPaise(_emi.text) : null),
+            tenureMonths: Value(
+              _isDebt ? int.tryParse(_tenure.text.trim()) : null,
+            ),
           ),
         );
     if (!mounted) return;
@@ -235,6 +338,22 @@ class _AccountSheetState extends ConsumerState<_AccountSheet> {
       );
     }
   }
+
+  Widget _money(TextEditingController c, String hint, {bool signed = false}) =>
+      TextField(
+        controller: c,
+        keyboardType: TextInputType.numberWithOptions(
+          decimal: true,
+          signed: signed,
+        ),
+        decoration: InputDecoration(prefixText: '₹ ', labelText: hint),
+      );
+
+  Widget _number(TextEditingController c, String hint) => TextField(
+    controller: c,
+    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+    decoration: InputDecoration(labelText: hint),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -277,17 +396,49 @@ class _AccountSheetState extends ConsumerState<_AccountSheet> {
               ],
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: _opening,
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-                signed: true,
+            if (_isDebt) ...[
+              _money(_principal, 'Original amount'),
+              const SizedBox(height: 12),
+            ],
+            _money(_opening, switch (_type) {
+              AccountType.creditCard => 'Outstanding today',
+              AccountType.loan => 'Still owed now (blank = full amount)',
+              AccountType.lent => 'They still owe (blank = full amount)',
+              _ => 'Balance today (use − if overdrawn)',
+            }, signed: !_isCard && !_isDebt),
+            if (_isCard) ...[
+              const SizedBox(height: 12),
+              _money(_limit, 'Credit limit'),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(child: _number(_statementDay, 'Statement day')),
+                  const SizedBox(width: 12),
+                  Expanded(child: _number(_dueDay, 'Due day')),
+                ],
               ),
-              decoration: const InputDecoration(
-                prefixText: '₹ ',
-                hintText: 'Opening balance (use − for dues)',
+            ],
+            if (_isDebt) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(child: _number(_rate, 'Interest % / yr')),
+                  const SizedBox(width: 12),
+                  Expanded(child: _number(_tenure, 'Months')),
+                ],
               ),
-            ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(child: _money(_emi, 'EMI per month')),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: _fillEmi,
+                    child: const Text('Work it out'),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 12),
             TextField(
               controller: _hints,

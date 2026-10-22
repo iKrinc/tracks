@@ -1,28 +1,32 @@
 import 'package:flutter/material.dart';
 
-/// Default soft palette from CLAUDE.md.
+/// "Marigold & chai": warm paper, marigold-to-coral heroes, espresso ink.
+/// Owner moved away from the blue/purple pastels on 2026-10-23. Every pair
+/// below was measured; see .claude/skills/tracks-design before changing.
 abstract final class Palette {
-  static const sky = Color(0xFFCBF0F8);
-  static const blue = Color(0xFFAECBFA);
-  static const lilac = Color(0xFFD7AEFB);
-  static const pink = Color(0xFFFDCFE8);
+  // Category / account fills (always with dark ink on top).
+  static const sand = Color(0xFFF3E3C4);
+  static const marigoldSoft = Color(0xFFFBE3A8);
+  static const coralSoft = Color(0xFFF8D2C2);
+  static const sage = Color(0xFFD6E7D2);
+  static const jadeSoft = Color(0xFFC9E7DD);
+  static const clay = Color(0xFFE9C9B5);
+  static const blush = Color(0xFFF6D5D0);
+  static const butter = Color(0xFFF7EBB5);
 
-  // Gentle amount colours. Measured ≥ 5.2:1 on white and on [sky]; see
-  // .claude/skills/tracks-design before changing them.
-  static const income = Color(0xFF276B4E);
-  static const expense = Color(0xFF9E3F5E);
-  static const incomeDark = Color(0xFF8FD8B4);
-  static const expenseDark = Color(0xFFF4A7C0);
+  // Amount colours: ≥ 5.2:1 on every light surface, ≥ 7.8:1 on dark ones.
+  static const income = Color(0xFF1E6B4F);
+  static const expense = Color(0xFFA63A2B);
+  static const incomeDark = Color(0xFF8FD3B0);
+  static const expenseDark = Color(0xFFF2A08A);
 
-  // Hero gradients. Ink on them is ≥ 8.8:1 (light) / ≥ 12:1 (dark). Green
-  // and pink *text* fail on lilac (3.4:1), so hero amounts use ink and show
-  // direction with a coloured arrow (icons need 3:1) and the +/− sign.
-  static const heroLight = [sky, lilac];
-  static const heroDark = [Color(0xFF1E2A44), Color(0xFF33264A)];
-  static const heroInkLight = Color(0xFF1B1F2A);
-  static const heroInkDark = Color(0xFFEEF0FA);
-  static const heroMutedLight = Color(0xFF3D4255);
-  static const heroMutedDark = Color(0xFFB9BED0);
+  // Hero gradients. Ink ≥ 8:1 on both ends (light), ≥ 10.8:1 (dark).
+  static const heroLight = [Color(0xFFF7C35F), Color(0xFFF29E7A)];
+  static const heroDark = [Color(0xFF3A2A1E), Color(0xFF183A31)];
+  static const heroInkLight = Color(0xFF221C15);
+  static const heroInkDark = Color(0xFFF5EFE6);
+  static const heroMutedLight = Color(0xFF4A3F33);
+  static const heroMutedDark = Color(0xFFC9BFB2);
 }
 
 /// Design tokens beyond ColorScheme: see .claude/skills/tracks-design.
@@ -42,13 +46,14 @@ class TracksTokens extends ThemeExtension<TracksTokens> {
   final Color heroInk;
   final Color heroMuted;
 
-  /// Meter track on a hero: fills stay ≥ 4.3:1 against it.
+  /// Meter track on a hero.
   final Color heroTrack;
 
-  /// Circle behind hero icons: arrows stay ≥ 4.2:1 against it.
+  /// Circle behind hero icons.
   final Color heroChip;
 
-  /// Two-series chart colours: validated categorical slots 1-2 (dataviz).
+  /// Two-series chart colours, validated with the dataviz script (CVD ΔE
+  /// ≥ 8.8, ≥ 3:1 on the surface): jade + saffron.
   final Color seriesA;
   final Color seriesB;
 
@@ -92,45 +97,99 @@ class TracksTokens extends ThemeExtension<TracksTokens> {
   }
 }
 
-ThemeData buildTheme(Brightness brightness) {
-  final light = brightness == Brightness.light;
-  var scheme = ColorScheme.fromSeed(
-    seedColor: Palette.blue,
-    brightness: brightness,
+ColorScheme _scheme(Brightness b) {
+  final seeded = ColorScheme.fromSeed(
+    seedColor: const Color(0xFFB07A2A),
+    brightness: b,
   );
-  if (light) {
-    scheme = scheme.copyWith(
-      primaryContainer: Palette.blue,
-      secondaryContainer: Palette.sky,
-      tertiaryContainer: Palette.lilac,
-      surface: const Color(0xFFF8F9FD),
-      surfaceContainerLow: const Color(0xFFF2F5FB),
-      surfaceContainer: const Color(0xFFECF0F8),
+  if (b == Brightness.light) {
+    return seeded.copyWith(
+      primary: const Color(0xFF2B2118),
+      onPrimary: const Color(0xFFFBF6EC),
+      primaryContainer: Palette.marigoldSoft,
+      onPrimaryContainer: const Color(0xFF3A2A10),
+      secondary: const Color(0xFF6B5532),
+      secondaryContainer: Palette.sand,
+      onSecondaryContainer: const Color(0xFF221C15),
+      tertiary: const Color(0xFF9A4A2E),
+      tertiaryContainer: Palette.coralSoft,
+      onTertiaryContainer: const Color(0xFF4A2014),
+      surface: const Color(0xFFFBF6EC),
+      onSurface: const Color(0xFF221C15),
+      onSurfaceVariant: const Color(0xFF5A4E40),
+      surfaceContainerLowest: const Color(0xFFFFFCF6),
+      surfaceContainerLow: const Color(0xFFF5EEE1),
+      surfaceContainer: const Color(0xFFEFE6D5),
+      surfaceContainerHigh: const Color(0xFFE9DFCC),
+      surfaceContainerHighest: const Color(0xFFE3D8C3),
+      outline: const Color(0xFF8A7C6A),
+      outlineVariant: const Color(0xFFD9CDB8),
+      inverseSurface: const Color(0xFF2B2118),
+      onInverseSurface: const Color(0xFFFBF6EC),
     );
   }
+  return seeded.copyWith(
+    primary: const Color(0xFFF7C35F),
+    onPrimary: const Color(0xFF2B1E05),
+    primaryContainer: const Color(0xFF4A3A1C),
+    onPrimaryContainer: Palette.marigoldSoft,
+    secondary: const Color(0xFFE3CFA6),
+    secondaryContainer: const Color(0xFF3A3024),
+    onSecondaryContainer: Palette.sand,
+    tertiary: const Color(0xFFF2A08A),
+    tertiaryContainer: const Color(0xFF4A2A20),
+    onTertiaryContainer: Palette.coralSoft,
+    surface: const Color(0xFF16120E),
+    onSurface: const Color(0xFFF5EFE6),
+    onSurfaceVariant: const Color(0xFFCBBFAF),
+    surfaceContainerLowest: const Color(0xFF110E0B),
+    surfaceContainerLow: const Color(0xFF1E1914),
+    surfaceContainer: const Color(0xFF261F18),
+    surfaceContainerHigh: const Color(0xFF30281F),
+    surfaceContainerHighest: const Color(0xFF3A3127),
+    outline: const Color(0xFF9A8C7A),
+    outlineVariant: const Color(0xFF4A4036),
+    inverseSurface: const Color(0xFFF5EFE6),
+    onInverseSurface: const Color(0xFF221C15),
+  );
+}
+
+ThemeData buildTheme(Brightness brightness) {
+  final light = brightness == Brightness.light;
+  final scheme = _scheme(brightness);
   final base = ThemeData(colorScheme: scheme, useMaterial3: true);
-  // Figures read as the hero of the app: tighter tracking, heavier weight.
+  // Figures are the hero of the app: tighter tracking, heavier weight.
   final text = base.textTheme.copyWith(
+    displayMedium: base.textTheme.displayMedium?.copyWith(
+      fontWeight: FontWeight.w700,
+      letterSpacing: -1.6,
+      height: 1.05,
+    ),
     displaySmall: base.textTheme.displaySmall?.copyWith(
-      fontWeight: FontWeight.w600,
+      fontWeight: FontWeight.w700,
       letterSpacing: -1.2,
     ),
     headlineMedium: base.textTheme.headlineMedium?.copyWith(
-      fontWeight: FontWeight.w600,
-      letterSpacing: -0.6,
+      fontWeight: FontWeight.w700,
+      letterSpacing: -0.8,
     ),
     headlineSmall: base.textTheme.headlineSmall?.copyWith(
-      fontWeight: FontWeight.w600,
-      letterSpacing: -0.4,
+      fontWeight: FontWeight.w700,
+      letterSpacing: -0.5,
     ),
     titleLarge: base.textTheme.titleLarge?.copyWith(
-      fontWeight: FontWeight.w600,
-      letterSpacing: -0.2,
+      fontWeight: FontWeight.w700,
+      letterSpacing: -0.3,
     ),
     titleMedium: base.textTheme.titleMedium?.copyWith(
       fontWeight: FontWeight.w600,
     ),
+    labelLarge: base.textTheme.labelLarge?.copyWith(
+      fontWeight: FontWeight.w600,
+      letterSpacing: 0.1,
+    ),
   );
+  final pill = RoundedRectangleBorder(borderRadius: BorderRadius.circular(28));
   return ThemeData(
     colorScheme: scheme,
     useMaterial3: true,
@@ -139,7 +198,15 @@ ThemeData buildTheme(Brightness brightness) {
     appBarTheme: AppBarTheme(
       backgroundColor: scheme.surface,
       surfaceTintColor: Colors.transparent,
-      titleTextStyle: text.titleLarge?.copyWith(color: scheme.onSurface),
+      // Explicit sizes: theme text styles only get their font size when
+      // MaterialApp localizes the theme, and AppBar styles are not.
+      titleTextStyle: TextStyle(
+        fontSize: 26,
+        height: 1.2,
+        fontWeight: FontWeight.w700,
+        letterSpacing: -0.6,
+        color: scheme.onSurface,
+      ),
     ),
     cardTheme: CardThemeData(
       elevation: 0,
@@ -151,8 +218,42 @@ ThemeData buildTheme(Brightness brightness) {
     ),
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: scheme.surfaceContainerLow,
-      indicatorColor: scheme.secondaryContainer,
-      labelTextStyle: WidgetStatePropertyAll(text.labelMedium),
+      indicatorColor: scheme.primaryContainer,
+      labelTextStyle: WidgetStatePropertyAll(
+        TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: scheme.onSurface,
+        ),
+      ),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(shape: pill),
+    ),
+    floatingActionButtonTheme: FloatingActionButtonThemeData(
+      backgroundColor: scheme.primary,
+      foregroundColor: scheme.onPrimary,
+      shape: pill,
+    ),
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        backgroundColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.selected)
+              ? scheme.primary
+              : Colors.transparent,
+        ),
+        foregroundColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.selected)
+              ? scheme.onPrimary
+              : scheme.onSurface,
+        ),
+        side: WidgetStatePropertyAll(BorderSide(color: scheme.outline)),
+      ),
+    ),
+    chipTheme: ChipThemeData(
+      showCheckmark: false,
+      selectedColor: scheme.primaryContainer,
+      side: BorderSide(color: scheme.outlineVariant),
     ),
     extensions: [
       TracksTokens(
@@ -161,24 +262,24 @@ ThemeData buildTheme(Brightness brightness) {
         heroMuted: light ? Palette.heroMutedLight : Palette.heroMutedDark,
         heroTrack: light
             ? Colors.white.withValues(alpha: 0.45)
-            : Palette.heroInkDark.withValues(alpha: 0.10),
+            : Palette.heroInkDark.withValues(alpha: 0.12),
         heroChip: light
-            ? Colors.white.withValues(alpha: 0.35)
-            : Palette.heroInkDark.withValues(alpha: 0.08),
-        seriesA: light ? const Color(0xFF2A78D6) : const Color(0xFF3987E5),
-        seriesB: light ? const Color(0xFFEB6834) : const Color(0xFFD95926),
+            ? Colors.white.withValues(alpha: 0.40)
+            : Palette.heroInkDark.withValues(alpha: 0.10),
+        seriesA: light ? const Color(0xFF1B8A72) : const Color(0xFF239A7F),
+        seriesB: light ? const Color(0xFFD4672A) : const Color(0xFFD9692C),
       ),
     ],
     visualDensity: VisualDensity.standard,
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
+      fillColor: scheme.surfaceContainer,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(28),
         borderSide: BorderSide.none,
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
     ),
-    chipTheme: const ChipThemeData(showCheckmark: false),
   );
 }
 

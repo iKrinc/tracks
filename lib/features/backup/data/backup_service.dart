@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:tracks/data/app_database.dart';
+import 'package:tracks/data/default_data.dart';
 import 'package:tracks/features/backup/domain/csv_transactions.dart';
 
 /// Bump when the backup JSON layout changes; keep reading older formats.
@@ -151,7 +152,7 @@ Future<CsvImportResult> importCsvRows(
             AccountsCompanion.insert(
               name: name.trim(),
               type: key == 'cash' ? AccountType.cash : AccountType.bank,
-              color: 0xFFAECBFA,
+              color: defaultAccountColor,
               icon: key == 'cash' ? 'payments' : 'account_balance',
               matchHints: Value(key),
             ),

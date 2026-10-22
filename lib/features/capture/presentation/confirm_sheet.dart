@@ -6,6 +6,7 @@ import 'package:tracks/app/providers.dart';
 import 'package:tracks/core/dates.dart';
 import 'package:tracks/core/money.dart';
 import 'package:tracks/data/app_database.dart';
+import 'package:tracks/data/default_data.dart';
 import 'package:tracks/features/capture/domain/account_match.dart';
 import 'package:tracks/features/capture/domain/capture_draft.dart';
 import 'package:tracks/features/capture/domain/category_guess.dart';
@@ -45,6 +46,7 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
   int? _categoryId;
   bool _categoryTouched = false;
   List<Transaction> _duplicates = const [];
+  late bool _asIou = widget.draft?.person != null;
   String? _error;
 
   CaptureDraft? get _d => widget.draft;
@@ -106,11 +108,13 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
       _accountId = id ?? accounts.first.id;
     }
     if (_type == TxnType.transfer && _toAccountId == null && d != null) {
-      final id = matchAccount(
-        _matchable(accounts),
-        hint: d.toAccountHint,
-        last4: d.toAccountLast4,
-      );
+      final id =
+          d.toAccountId ??
+          matchAccount(
+            _matchable(accounts),
+            hint: d.toAccountHint,
+            last4: d.toAccountLast4,
+          );
       _toAccountMatched = id != null;
       _toAccountId = id == _accountId ? null : id;
     }
@@ -275,6 +279,17 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
                   label: Text(_dateLabel(_date)),
                   onPressed: _pickDate,
                 ),
+                if (_d?.person != null && _type != TxnType.transfer)
+                  FilterChip(
+                    avatar: const Icon(Icons.handshake_outlined, size: 18),
+                    label: Text('Track as IOU with ${_d!.person}'),
+                    tooltip: 'Keeps it out of spending; shows what is owed',
+                    // The global theme hides checkmarks; this toggle needs one
+                    // because its fill alone barely differs from the sheet.
+                    showCheckmark: true,
+                    selected: _asIou,
+                    onSelected: (v) => setState(() => _asIou = v),
+                  ),
                 if (_d?.source == TxnSource.sms)
                   const Chip(
                     avatar: Icon(Icons.sms_outlined, size: 18),
@@ -340,32 +355,47 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
 
     final d = _d;
     final now = DateTime.now();
-    await ref
-        .read(appDatabaseProvider)
-        .addTransaction(
-          TransactionsCompanion.insert(
-            type: _type,
-            amountPaise: paise,
-            accountId: _accountId!,
-            toAccountId: Value(transfer ? _toAccountId : null),
-            categoryId: Value(transfer ? null : _categoryId),
-            note: Value(_note.text.trim()),
-            merchant: Value(d?.merchant),
-            tags: Value(d?.tags ?? ''),
-            occurredAt: DateTime(
-              _date.year,
-              _date.month,
-              _date.day,
-              now.hour,
-              now.minute,
-              now.second,
-            ),
-            source: Value(d?.source ?? TxnSource.manual),
-            rawSourceText: Value(d?.rawText),
-            refNo: Value(d?.refNo),
-            linkedRecurringId: Value(d?.linkedRecurringId),
-          ),
-        );
+    final db = ref.read(appDatabaseProvider);
+    // IOU: move money to/from the person's account instead of spending it.
+    var type = _type;
+    var from = _accountId!;
+    int? to = transfer ? _toAccountId : null;
+    final person = d?.person;
+    if (_asIou && person != null && !transfer) {
+      final lent = d!.tags.contains('lent');
+      final personId = await db.findOrCreatePerson(person, lent: lent);
+      type = TxnType.transfer;
+      if (lent) {
+        to = personId;
+      } else {
+        to = from;
+        from = personId;
+      }
+    }
+    await db.addTransaction(
+      TransactionsCompanion.insert(
+        type: type,
+        amountPaise: paise,
+        accountId: from,
+        toAccountId: Value(to),
+        categoryId: Value(type == TxnType.transfer ? null : _categoryId),
+        note: Value(_note.text.trim()),
+        merchant: Value(d?.merchant),
+        tags: Value(d?.tags ?? ''),
+        occurredAt: DateTime(
+          _date.year,
+          _date.month,
+          _date.day,
+          now.hour,
+          now.minute,
+          now.second,
+        ),
+        source: Value(d?.source ?? TxnSource.manual),
+        rawSourceText: Value(d?.rawText),
+        refNo: Value(d?.refNo),
+        linkedRecurringId: Value(d?.linkedRecurringId),
+      ),
+    );
     final recurringId = d?.linkedRecurringId;
     if (recurringId != null) {
       await ref.read(appDatabaseProvider).markRecurringPaid(recurringId, _date);
@@ -628,7 +658,7 @@ Future<int?> showAddAccountDialog(
                     AccountsCompanion.insert(
                       name: n,
                       type: type,
-                      color: 0xFFAECBFA,
+                      color: defaultAccountColor,
                       icon: _accountTypeIcon(type),
                       matchHints: Value(allHints),
                     ),
@@ -649,6 +679,7 @@ String _accountTypeLabel(AccountType t) => switch (t) {
   AccountType.wallet => 'Wallet / UPI',
   AccountType.creditCard => 'Credit card',
   AccountType.loan => 'Loan',
+  AccountType.lent => 'Owes me',
 };
 
 String _accountTypeIcon(AccountType t) => switch (t) {
@@ -657,4 +688,5 @@ String _accountTypeIcon(AccountType t) => switch (t) {
   AccountType.wallet => 'account_balance_wallet',
   AccountType.creditCard => 'credit_card',
   AccountType.loan => 'request_quote',
+  AccountType.lent => 'person',
 };

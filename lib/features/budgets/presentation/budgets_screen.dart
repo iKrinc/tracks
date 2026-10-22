@@ -112,7 +112,7 @@ class BudgetsScreen extends ConsumerWidget {
                                 radius: 16,
                                 backgroundColor: Color(
                                   categories[v.budget.categoryId]?.color ??
-                                      Palette.sky.toARGB32(),
+                                      Palette.sand.toARGB32(),
                                 ),
                                 foregroundColor: Colors.black87,
                                 child: Icon(
