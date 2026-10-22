@@ -7,14 +7,25 @@ export 'package:tracks/data/tables.dart';
 
 part 'app_database.drift.dart';
 
-@DriftDatabase(tables: [Accounts, Categories, Transactions, Rules, AppSettings])
+@DriftDatabase(
+  tables: [
+    Accounts,
+    Categories,
+    Transactions,
+    Rules,
+    AppSettings,
+    Budgets,
+    Recurrings,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _open());
 
   /// v1: accounts, categories, transactions, rules.
   /// v2: app_settings.
+  /// v3: budgets, recurrings.
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   static QueryExecutor _open() => driftDatabase(
     name: 'tracks',
@@ -33,6 +44,10 @@ class AppDatabase extends _$AppDatabase {
     },
     onUpgrade: (m, from, to) async {
       if (from < 2) await m.createTable(appSettings);
+      if (from < 3) {
+        await m.createTable(budgets);
+        await m.createTable(recurrings);
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
@@ -127,6 +142,11 @@ class AppDatabase extends _$AppDatabase {
             ]))
           .watch();
 
+  /// Every transaction, for yearly views and reports.
+  Stream<List<Transaction>> watchAllTransactions() => (select(
+    transactions,
+  )..orderBy([(t) => OrderingTerm.desc(t.occurredAt)])).watch();
+
   Future<int> addTransaction(TransactionsCompanion entry) =>
       into(transactions).insert(entry);
 
@@ -217,6 +237,34 @@ class AppDatabase extends _$AppDatabase {
       ..limit(limit);
     return q.watch();
   }
+
+  // ---- Budgets & recurring ---------------------------------------------
+
+  Stream<List<Budget>> watchBudgets() => select(budgets).watch();
+
+  Future<void> saveBudget(BudgetsCompanion b) =>
+      into(budgets).insertOnConflictUpdate(b);
+
+  Future<int> deleteBudget(int id) =>
+      (delete(budgets)..where((b) => b.id.equals(id))).go();
+
+  Stream<List<Recurring>> watchRecurrings() =>
+      (select(recurrings)
+            ..where((r) => r.status.equalsValue(RecurringStatus.ended).not())
+            ..orderBy([(r) => OrderingTerm(expression: r.name)]))
+          .watch();
+
+  Future<int> saveRecurring(RecurringsCompanion r) =>
+      into(recurrings).insertOnConflictUpdate(r);
+
+  Future<int> deleteRecurring(int id) =>
+      (delete(recurrings)..where((r) => r.id.equals(id))).go();
+
+  /// Records that the occurrence around [paidOn] was paid.
+  Future<void> markRecurringPaid(int id, DateTime paidOn) =>
+      (update(recurrings)..where((r) => r.id.equals(id))).write(
+        RecurringsCompanion(lastPaid: Value(paidOn)),
+      );
 
   // ---- Settings ----------------------------------------------------------
 

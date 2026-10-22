@@ -11,6 +11,13 @@ enum TxnType { expense, income, transfer }
 
 enum TxnSource { manual, sms, screenshot, quickText, recurring, import }
 
+enum RepeatUnit { week, month, year }
+
+/// How a recurring payment is collected, if automatically.
+enum AutopayKind { none, upiMandate, cardStandingInstruction, nach }
+
+enum RecurringStatus { active, paused, ended }
+
 /// One aggregated row: the sum of all transactions sharing these keys.
 typedef TxnTotal = ({int accountId, int? toAccountId, TxnType type, int sum});
 
@@ -99,4 +106,45 @@ class AppSettings extends Table {
 
   @override
   Set<Column> get primaryKey => {key};
+}
+
+/// Monthly spending limit for a category, or overall when [categoryId] is
+/// null. Added in v3.
+class Budgets extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  IntColumn get categoryId =>
+      integer().nullable().unique().references(Categories, #id)();
+  IntColumn get amountPaise => integer()();
+
+  /// Carry last month's unspent amount into this month.
+  BoolColumn get rollover => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
+/// A bill, subscription, EMI or income that repeats. Added in v3.
+class Recurrings extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text().withLength(min: 1, max: 60)();
+  TextColumn get type => textEnum<TxnType>()();
+
+  /// Expected amount; for variable bills (electricity) the last amount.
+  IntColumn get amountPaise => integer()();
+  BoolColumn get variableAmount =>
+      boolean().withDefault(const Constant(false))();
+  IntColumn get accountId => integer().references(Accounts, #id)();
+  IntColumn get categoryId =>
+      integer().nullable().references(Categories, #id)();
+  DateTimeColumn get startDate => dateTime()();
+  TextColumn get unit => textEnum<RepeatUnit>()();
+  IntColumn get interval => integer().withDefault(const Constant(1))();
+  TextColumn get autopay =>
+      textEnum<AutopayKind>().withDefault(Constant(AutopayKind.none.name))();
+  IntColumn get remindDaysBefore => integer().withDefault(const Constant(1))();
+  TextColumn get status => textEnum<RecurringStatus>().withDefault(
+    Constant(RecurringStatus.active.name),
+  )();
+
+  /// Date of the last occurrence marked paid; null = none yet.
+  DateTimeColumn get lastPaid => dateTime().nullable()();
+  TextColumn get note => text().withDefault(const Constant(''))();
 }

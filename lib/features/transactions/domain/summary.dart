@@ -39,3 +39,41 @@ List<(DateTime day, List<T> items)> groupByDay<T>(
   }
   return [for (final e in groups.entries) (e.key, e.value)];
 }
+
+/// The fields period and report maths need, decoupled from drift rows.
+typedef DatedTxn = ({
+  TxnType type,
+  int amountPaise,
+  DateTime occurredAt,
+  int? categoryId,
+});
+
+Totals _totals(Iterable<DatedTxn> txns) =>
+    totalsOf(txns.map((t) => (type: t.type, amountPaise: t.amountPaise)));
+
+/// Totals for each of the 12 months of [year] (empty months are zero).
+List<(DateTime month, Totals totals)> totalsByMonth(
+  Iterable<DatedTxn> txns,
+  int year,
+) {
+  final byMonth = <int, List<DatedTxn>>{};
+  for (final t in txns) {
+    if (t.occurredAt.year == year) {
+      byMonth.putIfAbsent(t.occurredAt.month, () => []).add(t);
+    }
+  }
+  return [
+    for (var m = 1; m <= 12; m++)
+      (DateTime(year, m), _totals(byMonth[m] ?? const [])),
+  ];
+}
+
+/// Totals per year that has transactions, newest first.
+List<(int year, Totals totals)> totalsByYear(Iterable<DatedTxn> txns) {
+  final byYear = <int, List<DatedTxn>>{};
+  for (final t in txns) {
+    byYear.putIfAbsent(t.occurredAt.year, () => []).add(t);
+  }
+  final years = byYear.keys.toList()..sort((a, b) => b.compareTo(a));
+  return [for (final y in years) (y, _totals(byYear[y]!))];
+}

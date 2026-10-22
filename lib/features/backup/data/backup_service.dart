@@ -31,6 +31,10 @@ Future<Map<String, Object?>> buildBackup(AppDatabase db) async => {
   'settings': [
     for (final r in await db.select(db.appSettings).get()) r.toJson(),
   ],
+  'budgets': [for (final r in await db.select(db.budgets).get()) r.toJson()],
+  'recurrings': [
+    for (final r in await db.select(db.recurrings).get()) r.toJson(),
+  ],
 };
 
 typedef RestoreSummary = ({int accounts, int categories, int transactions});
@@ -63,8 +67,13 @@ Future<RestoreSummary> restoreBackup(
   final transactions = list('transactions').map(Transaction.fromJson).toList();
   final rules = list('rules').map(Rule.fromJson).toList();
   final settings = list('settings').map(AppSetting.fromJson).toList();
+  // Absent in backups from before schema v3.
+  final budgets = list('budgets').map(Budget.fromJson).toList();
+  final recurrings = list('recurrings').map(Recurring.fromJson).toList();
 
   await db.transaction(() async {
+    await db.delete(db.budgets).go();
+    await db.delete(db.recurrings).go();
     await db.delete(db.rules).go();
     await db.delete(db.transactions).go();
     await db.delete(db.categories).go();
@@ -76,6 +85,8 @@ Future<RestoreSummary> restoreBackup(
       b.insertAll(db.transactions, transactions);
       b.insertAll(db.rules, rules);
       b.insertAll(db.appSettings, settings);
+      b.insertAll(db.budgets, budgets);
+      b.insertAll(db.recurrings, recurrings);
     });
   });
   return (

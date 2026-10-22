@@ -46,6 +46,19 @@ void main() {
       ),
     );
     await db.setSetting('lock', 'on');
+    await db.saveBudget(BudgetsCompanion.insert(amountPaise: 2000000));
+    await db.saveRecurring(
+      RecurringsCompanion.insert(
+        name: 'Netflix',
+        type: TxnType.expense,
+        amountPaise: 64900,
+        accountId: hdfc,
+        startDate: DateTime(2026, 1, 15),
+        unit: RepeatUnit.month,
+        autopay: const Value(AutopayKind.upiMandate),
+        lastPaid: Value(DateTime(2026, 10, 15)),
+      ),
+    );
 
     final json = jsonEncode(await buildBackup(db));
 
@@ -69,6 +82,13 @@ void main() {
       (await db.select(db.categories).get()).length,
     );
     expect(await fresh.getSetting('lock'), 'on');
+    expect(
+      (await fresh.select(fresh.budgets).get()).single.amountPaise,
+      2000000,
+    );
+    final r = (await fresh.select(fresh.recurrings).get()).single;
+    expect(r.autopay, AutopayKind.upiMandate);
+    expect(r.lastPaid, DateTime(2026, 10, 15));
     await fresh.close();
   });
 
@@ -84,6 +104,14 @@ void main() {
     );
     await restoreBackup(db, backup);
     expect(await db.select(db.transactions).get(), isEmpty);
+  });
+
+  test('backups from before budgets/recurring still restore', () async {
+    final old = await buildBackup(db)
+      ..remove('budgets')
+      ..remove('recurrings');
+    final s = await restoreBackup(db, old);
+    expect(s.accounts, 1);
   });
 
   test('rejects files that are not Tracks backups', () async {
