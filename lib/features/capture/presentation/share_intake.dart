@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -6,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:tracks/app/providers.dart';
 import 'package:tracks/data/app_database.dart';
+import 'package:tracks/features/backup/presentation/backup_actions.dart';
 import 'package:tracks/features/capture/domain/capture_draft.dart';
 import 'package:tracks/features/capture/presentation/confirm_sheet.dart';
 
@@ -74,6 +76,36 @@ class _ShareIntakeState extends ConsumerState<ShareIntake> {
   }
 
   Future<void> _handle(List<SharedMediaFile> files) async {
+    // A backup or CSV opened from Drive / Gmail / Files.
+    final file = files.where((f) => f.type == SharedMediaType.file).firstOrNull;
+    if (file != null) {
+      final name = file.path.toLowerCase();
+      final isJson =
+          name.endsWith('.json') || file.mimeType == 'application/json';
+      final isCsv =
+          name.endsWith('.csv') || (file.mimeType ?? '').contains('csv');
+      if (!isJson && !isCsv) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Tracks can open backup (.json) and .csv files'),
+            ),
+          );
+        }
+        return;
+      }
+      final contents = await File(file.path).readAsString();
+      if (!mounted) return;
+      await guardFileJob(context, () async {
+        if (isJson) {
+          await restoreFromJsonText(context, ref, contents);
+        } else {
+          await importCsvText(context, ref, contents);
+        }
+      });
+      return;
+    }
+
     final text = files
         .where(
           (f) =>
@@ -85,7 +117,13 @@ class _ShareIntakeState extends ConsumerState<ShareIntake> {
     if (text.isEmpty) {
       if (files.isNotEmpty && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Only shared text is supported so far')),
+          const SnackBar(
+            content: Text(
+              'Images aren'
+              "'"
+              't supported yet. Share the SMS text instead.',
+            ),
+          ),
         );
       }
       return;

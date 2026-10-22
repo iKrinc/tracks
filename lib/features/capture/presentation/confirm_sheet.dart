@@ -93,12 +93,13 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
     if (_accountId == null) {
       final id = d == null
           ? null
-          : matchAccount(
-              _matchable(accounts),
-              hint: d.accountHint,
-              last4: d.accountLast4,
-              bank: d.bankHint,
-            );
+          : d.accountId ??
+                matchAccount(
+                  _matchable(accounts),
+                  hint: d.accountHint,
+                  last4: d.accountLast4,
+                  bank: d.bankHint,
+                );
       _accountMatched = id != null;
       // Unmatched (e.g. a card bill payment, whose source bank is rarely in
       // the SMS): fall back to the first account; the user can change it.
@@ -142,6 +143,13 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
         ref.watch(categoriesProvider(kind)).value ?? const <Category>[];
 
     _resolveAccounts(accounts);
+    final presetCategory = _d?.categoryId;
+    if (!_categoryTouched &&
+        _categoryId == null &&
+        presetCategory != null &&
+        categories.any((c) => c.id == presetCategory)) {
+      _categoryId = presetCategory;
+    }
     if (!_categoryTouched && _categoryId == null && categories.isNotEmpty) {
       final name = guessCategoryName(
         '${_d?.categoryText ?? ''} ${_note.text}',
@@ -355,8 +363,13 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
             source: Value(d?.source ?? TxnSource.manual),
             rawSourceText: Value(d?.rawText),
             refNo: Value(d?.refNo),
+            linkedRecurringId: Value(d?.linkedRecurringId),
           ),
         );
+    final recurringId = d?.linkedRecurringId;
+    if (recurringId != null) {
+      await ref.read(appDatabaseProvider).markRecurringPaid(recurringId, _date);
+    }
     if (mounted) Navigator.of(context).pop(true);
   }
 }

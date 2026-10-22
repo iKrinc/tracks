@@ -21,6 +21,9 @@ class CaptureDraft {
     this.categoryText = '',
     this.refNo,
     this.rawText,
+    this.accountId,
+    this.categoryId,
+    this.linkedRecurringId,
   });
 
   final TxnType type;
@@ -46,6 +49,13 @@ class CaptureDraft {
 
   /// Original text, stored for audit.
   final String? rawText;
+
+  /// Known ids (e.g. paying a recurring bill) win over hints and guesses.
+  final int? accountId;
+  final int? categoryId;
+
+  /// Saving marks this recurring item paid.
+  final int? linkedRecurringId;
 }
 
 sealed class CaptureOutcome {
