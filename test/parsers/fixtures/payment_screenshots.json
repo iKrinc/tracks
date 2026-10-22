@@ -1,0 +1,121 @@
+[
+  {
+    "id": "gpay_paid_merchant",
+    "text": "₹250\nPaid to SWIGGY\nCompleted\n21 Oct 2026, 8:42 pm\nUPI transaction ID\n629412345678\nTo: SWIGGY\nswiggy@icici\nFrom: HDFC Bank •••• 1234\nGoogle transaction ID\nCICAgXXXXXXXX",
+    "expect": {
+      "kind": "debit",
+      "amountPaise": 25000,
+      "merchant": "SWIGGY",
+      "vpa": "swiggy@icici",
+      "account": "1234",
+      "bank": "hdfc",
+      "ref": "629412345678",
+      "date": "2026-10-21"
+    }
+  },
+  {
+    "id": "gpay_received",
+    "text": "₹500\nReceived from Priya S\nCompleted\n17 Oct 2026, 11:03 am\nUPI transaction ID\n629311112222\nFrom: Priya S\npriya.s@okaxis\nTo: Kotak Mahindra Bank •••• 7890",
+    "expect": {
+      "kind": "credit",
+      "amountPaise": 50000,
+      "merchant": "Priya S",
+      "vpa": "priya.s@okaxis",
+      "account": "7890",
+      "bank": "kotak",
+      "ref": "629311112222",
+      "date": "2026-10-17"
+    }
+  },
+  {
+    "id": "phonepe_paid_person",
+    "text": "Transaction Successful\n09:15 pm on 20 Oct 2026\nPaid to\nRavi Kumar\nravi.k@ybl\n₹120\nTransfer Details\nTransaction ID\nT2610201234567890\nDebited from\nXXXXXXXX5678\n₹120\nUTR: 629398765432",
+    "expect": {
+      "kind": "debit",
+      "amountPaise": 12000,
+      "merchant": "Ravi Kumar",
+      "vpa": "ravi.k@ybl",
+      "account": "5678",
+      "bank": null,
+      "ref": "629398765432",
+      "date": "2026-10-20"
+    }
+  },
+  {
+    "id": "paytm_paid",
+    "text": "Paid Successfully\nRs.40\nTo: CHAI POINT\nUPI ID: chaipoint@paytm\nFrom: State Bank Of India - 5678\nUPI Ref. No: 629322223333\n22 Oct 2026, 10:05 AM",
+    "expect": {
+      "kind": "debit",
+      "amountPaise": 4000,
+      "merchant": "CHAI POINT",
+      "vpa": "chaipoint@paytm",
+      "account": "5678",
+      "bank": "sbi",
+      "ref": "629322223333",
+      "date": "2026-10-22"
+    }
+  },
+  {
+    "id": "phonepe_amount_with_paise_and_commas",
+    "text": "Transaction Successful\n06:30 pm on 01 Oct 2026\nPaid to\nACME ELECTRICITY\nbescom@axisbank\n₹1,234.50\nDebited from\nXXXXXXXX1234\nUTR: 629300009999",
+    "expect": {
+      "kind": "debit",
+      "amountPaise": 123450,
+      "merchant": "ACME ELECTRICITY",
+      "vpa": "bescom@axisbank",
+      "account": "1234",
+      "bank": null,
+      "ref": "629300009999",
+      "date": "2026-10-01"
+    }
+  },
+  {
+    "id": "ocr_rupee_read_as_symbol_noise",
+    "text": "Paid to ZOMATO\n%349\nCompleted\n13 Oct 2026, 1:10 pm\nUPI transaction ID\n629333334444\nFrom: HDFC Bank •••• 1234",
+    "expect": {
+      "kind": "debit",
+      "amountPaise": 34900,
+      "merchant": "ZOMATO",
+      "vpa": null,
+      "account": "1234",
+      "bank": "hdfc",
+      "ref": "629333334444",
+      "date": "2026-10-13"
+    }
+  },
+  {
+    "id": "ocr_mask_garbled",
+    "text": "Rs 349\nPaid to ZOMATO\nCompleted\n23 Oct 2026, 1:10 pm\nUPI transaction ID\n629333334444\nTo: ZOMATO\nzomato@hdfcbank\nFrom: HDFC Bank *** * 1234",
+    "expect": {
+      "kind": "debit",
+      "amountPaise": 34900,
+      "merchant": "ZOMATO",
+      "vpa": "zomato@hdfcbank",
+      "account": "1234",
+      "bank": "hdfc",
+      "ref": "629333334444",
+      "date": "2026-10-23"
+    }
+  },
+  {
+    "id": "ocr_mask_dropped",
+    "text": "Rs 99\nPaid to CHAI POINT\n23 Oct 2026\nFrom: State Bank of India 5678",
+    "expect": {
+      "kind": "debit",
+      "amountPaise": 9900,
+      "merchant": "CHAI POINT",
+      "vpa": null,
+      "account": "5678",
+      "bank": "sbi",
+      "ref": null,
+      "date": "2026-10-23"
+    }
+  },
+  {
+    "id": "not_a_payment",
+    "text": "Hey are we meeting at 5?\nSee you",
+    "expect": {
+      "kind": "none"
+    }
+  }
+]

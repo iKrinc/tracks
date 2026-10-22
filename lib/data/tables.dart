@@ -3,7 +3,10 @@ import 'package:drift/drift.dart';
 // Enums are stored by name (text) so JSON/CSV backups stay readable and
 // reordering an enum can never corrupt data.
 
-enum AccountType { cash, bank, wallet, creditCard, loan }
+/// `loan`: money you owe (home/car/personal loan, or borrowed from someone).
+/// `lent`: a person who owes you. Both are moved with transfers, so lending
+/// never shows up as spending. `lent` was added in v5.
+enum AccountType { cash, bank, wallet, creditCard, loan, lent }
 
 enum CategoryKind { expense, income }
 
@@ -35,6 +38,17 @@ class Accounts extends Table {
   TextColumn get matchHints => text().withDefault(const Constant(''))();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
   BoolColumn get archived => boolean().withDefault(const Constant(false))();
+
+  // Credit cards (v5).
+  IntColumn get creditLimitPaise => integer().nullable()();
+  IntColumn get statementDay => integer().nullable()();
+  IntColumn get dueDay => integer().nullable()();
+
+  // Loans and IOUs (v5). Interest is yearly, in basis points (9.5% = 950).
+  IntColumn get principalPaise => integer().nullable()();
+  IntColumn get interestRateBp => integer().nullable()();
+  IntColumn get emiPaise => integer().nullable()();
+  IntColumn get tenureMonths => integer().nullable()();
 }
 
 class Categories extends Table {
@@ -132,6 +146,9 @@ class Recurrings extends Table {
   BoolColumn get variableAmount =>
       boolean().withDefault(const Constant(false))();
   IntColumn get accountId => integer().references(Accounts, #id)();
+
+  /// For transfers, e.g. an EMI paid into a loan account (v5).
+  IntColumn get toAccountId => integer().nullable().references(Accounts, #id)();
   IntColumn get categoryId =>
       integer().nullable().references(Categories, #id)();
   DateTimeColumn get startDate => dateTime()();

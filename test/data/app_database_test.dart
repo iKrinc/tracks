@@ -156,6 +156,19 @@ void main() {
     });
   });
 
+  test('findOrCreatePerson reuses the same IOU account', () async {
+    final a = await db.findOrCreatePerson('ravi', lent: true);
+    final b = await db.findOrCreatePerson('Ravi ', lent: true);
+    expect(a, b);
+    final ravi = await (db.select(
+      db.accounts,
+    )..where((x) => x.id.equals(a))).getSingle();
+    expect(ravi.name, 'Ravi');
+    expect(ravi.type, AccountType.lent);
+    // Borrowing from the same person is a separate "I owe" account.
+    expect(await db.findOrCreatePerson('ravi', lent: false), isNot(a));
+  });
+
   test('foreign keys are enforced', () async {
     expect(
       () => db.addTransaction(

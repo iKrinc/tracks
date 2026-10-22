@@ -24,8 +24,11 @@ class AppDatabase extends _$AppDatabase {
   /// v1: accounts, categories, transactions, rules.
   /// v2: app_settings.
   /// v3: budgets, recurrings.
+  /// v4: no schema change; recolours old blue/purple defaults to the warm
+  ///     palette (only colours still equal to an old default).
+  /// v5: card and loan fields on accounts; recurrings.to_account_id.
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 5;
 
   static QueryExecutor _open() => driftDatabase(
     name: 'tracks',
@@ -48,11 +51,42 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(budgets);
         await m.createTable(recurrings);
       }
+      if (from < 4) await _recolourLegacy();
+      if (from < 5) {
+        for (final c in [
+          accounts.creditLimitPaise,
+          accounts.statementDay,
+          accounts.dueDay,
+          accounts.principalPaise,
+          accounts.interestRateBp,
+          accounts.emiPaise,
+          accounts.tenureMonths,
+        ]) {
+          await m.addColumn(accounts, c);
+        }
+        // Created with this column already when upgrading from < v3.
+        if (from >= 3) {
+          await m.addColumn(recurrings, recurrings.toAccountId);
+        }
+      }
     },
     beforeOpen: (details) async {
       await customStatement('PRAGMA foreign_keys = ON');
     },
   );
+
+  Future<void> _recolourLegacy() async {
+    for (final e in legacyCategoryColors.entries) {
+      await (update(categories)..where((c) => c.color.equals(e.key))).write(
+        CategoriesCompanion(color: Value(e.value)),
+      );
+    }
+    for (final e in legacyAccountColors.entries) {
+      await (update(accounts)..where((a) => a.color.equals(e.key))).write(
+        AccountsCompanion(color: Value(e.value)),
+      );
+    }
+  }
 
   Future<void> _seedDefaults() async {
     await batch((b) {
@@ -140,6 +174,56 @@ class AppDatabase extends _$AppDatabase {
               (t) => OrderingTerm.desc(t.occurredAt),
               (t) => OrderingTerm.desc(t.id),
             ]))
+          .watch();
+
+  Future<int> saveCategory(CategoriesCompanion c) =>
+      into(categories).insertOnConflictUpdate(c);
+
+  /// Persists a new order (index = sortOrder) for [ids].
+  Future<void> reorderCategories(List<int> ids) => batch((b) {
+    for (final (i, id) in ids.indexed) {
+      b.update(
+        categories,
+        CategoriesCompanion(sortOrder: Value(i)),
+        where: (c) => c.id.equals(id),
+      );
+    }
+  });
+
+  /// The IOU account for [name] (case-insensitive): "people who owe me"
+  /// when [lent], else "money I owe". Created on first use.
+  Future<int> findOrCreatePerson(String name, {required bool lent}) async {
+    final type = lent ? AccountType.lent : AccountType.loan;
+    final trimmed = name.trim();
+    final existing =
+        await (select(accounts)..where(
+              (a) =>
+                  a.type.equalsValue(type) &
+                  a.name.lower().equals(trimmed.toLowerCase()),
+            ))
+            .getSingleOrNull();
+    if (existing != null) return existing.id;
+    final pretty = trimmed[0].toUpperCase() + trimmed.substring(1);
+    return into(accounts).insert(
+      AccountsCompanion.insert(
+        name: pretty,
+        type: type,
+        color: 0xFFF6D5D0,
+        icon: 'person',
+        matchHints: Value(trimmed.toLowerCase()),
+      ),
+    );
+  }
+
+  /// Everything that moved money in or out of [accountId], oldest first.
+  Stream<List<Transaction>> watchAccountTxns(int accountId) =>
+      (select(transactions)
+            ..where(
+              (t) =>
+                  t.accountId.equals(accountId) |
+                  t.toAccountId.equals(accountId),
+            )
+            ..orderBy([(t) => OrderingTerm(expression: t.occurredAt)]))
           .watch();
 
   /// Every transaction, for yearly views and reports.

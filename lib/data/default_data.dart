@@ -16,14 +16,39 @@ class DefaultCategory {
   final List<String> subs;
 }
 
-// Soft palette from CLAUDE.md plus a few gentle companions.
-const _sky = 0xFFCBF0F8;
-const _blue = 0xFFAECBFA;
-const _lilac = 0xFFD7AEFB;
-const _pink = 0xFFFDCFE8;
-const _mint = 0xFFCCF2DD;
-const _peach = 0xFFFDE2C8;
-const _lemon = 0xFFFFF4B8;
+// Warm "marigold & chai" fills (see lib/app/theme.dart Palette); dark ink
+// on all of them. Each named after what it replaced, for the v4 recolour.
+const _sky = 0xFFF3E3C4; // sand
+const _blue = 0xFFC9E7DD; // jade
+const _lilac = 0xFFE9C9B5; // clay
+const _pink = 0xFFF6D5D0; // blush
+const _mint = 0xFFD6E7D2; // sage
+const _peach = 0xFFF8D2C2; // coral
+const _lemon = 0xFFF7EBB5; // butter
+
+/// Fill for new accounts.
+const defaultAccountColor = 0xFFFBE3A8; // marigold
+
+/// v4 recolour: the old blue/purple pastels → their warm replacements.
+/// Old blue was also the default for user-created accounts.
+const legacyCategoryColors = {
+  0xFFCBF0F8: _sky,
+  0xFFAECBFA: _blue,
+  0xFFD7AEFB: _lilac,
+  0xFFFDCFE8: _pink,
+  0xFFCCF2DD: _mint,
+  0xFFFDE2C8: _peach,
+  0xFFFFF4B8: _lemon,
+};
+const legacyAccountColors = {
+  0xFFCBF0F8: _sky,
+  0xFFAECBFA: defaultAccountColor,
+  0xFFD7AEFB: _lilac,
+  0xFFFDCFE8: _pink,
+  0xFFCCF2DD: _mint,
+  0xFFFDE2C8: _peach,
+  0xFFFFF4B8: _lemon,
+};
 
 const defaultExpenseCategories = [
   DefaultCategory('Food & Dining', 'restaurant', _peach, [

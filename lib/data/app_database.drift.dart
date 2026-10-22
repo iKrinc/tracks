@@ -122,6 +122,81 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
     ),
     defaultValue: const Constant(false),
   );
+  static const VerificationMeta _creditLimitPaiseMeta = const VerificationMeta(
+    'creditLimitPaise',
+  );
+  @override
+  late final GeneratedColumn<int> creditLimitPaise = GeneratedColumn<int>(
+    'credit_limit_paise',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _statementDayMeta = const VerificationMeta(
+    'statementDay',
+  );
+  @override
+  late final GeneratedColumn<int> statementDay = GeneratedColumn<int>(
+    'statement_day',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _dueDayMeta = const VerificationMeta('dueDay');
+  @override
+  late final GeneratedColumn<int> dueDay = GeneratedColumn<int>(
+    'due_day',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _principalPaiseMeta = const VerificationMeta(
+    'principalPaise',
+  );
+  @override
+  late final GeneratedColumn<int> principalPaise = GeneratedColumn<int>(
+    'principal_paise',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _interestRateBpMeta = const VerificationMeta(
+    'interestRateBp',
+  );
+  @override
+  late final GeneratedColumn<int> interestRateBp = GeneratedColumn<int>(
+    'interest_rate_bp',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _emiPaiseMeta = const VerificationMeta(
+    'emiPaise',
+  );
+  @override
+  late final GeneratedColumn<int> emiPaise = GeneratedColumn<int>(
+    'emi_paise',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _tenureMonthsMeta = const VerificationMeta(
+    'tenureMonths',
+  );
+  @override
+  late final GeneratedColumn<int> tenureMonths = GeneratedColumn<int>(
+    'tenure_months',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -134,6 +209,13 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
     matchHints,
     sortOrder,
     archived,
+    creditLimitPaise,
+    statementDay,
+    dueDay,
+    principalPaise,
+    interestRateBp,
+    emiPaise,
+    tenureMonths,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -207,6 +289,63 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
         archived.isAcceptableOrUnknown(data['archived']!, _archivedMeta),
       );
     }
+    if (data.containsKey('credit_limit_paise')) {
+      context.handle(
+        _creditLimitPaiseMeta,
+        creditLimitPaise.isAcceptableOrUnknown(
+          data['credit_limit_paise']!,
+          _creditLimitPaiseMeta,
+        ),
+      );
+    }
+    if (data.containsKey('statement_day')) {
+      context.handle(
+        _statementDayMeta,
+        statementDay.isAcceptableOrUnknown(
+          data['statement_day']!,
+          _statementDayMeta,
+        ),
+      );
+    }
+    if (data.containsKey('due_day')) {
+      context.handle(
+        _dueDayMeta,
+        dueDay.isAcceptableOrUnknown(data['due_day']!, _dueDayMeta),
+      );
+    }
+    if (data.containsKey('principal_paise')) {
+      context.handle(
+        _principalPaiseMeta,
+        principalPaise.isAcceptableOrUnknown(
+          data['principal_paise']!,
+          _principalPaiseMeta,
+        ),
+      );
+    }
+    if (data.containsKey('interest_rate_bp')) {
+      context.handle(
+        _interestRateBpMeta,
+        interestRateBp.isAcceptableOrUnknown(
+          data['interest_rate_bp']!,
+          _interestRateBpMeta,
+        ),
+      );
+    }
+    if (data.containsKey('emi_paise')) {
+      context.handle(
+        _emiPaiseMeta,
+        emiPaise.isAcceptableOrUnknown(data['emi_paise']!, _emiPaiseMeta),
+      );
+    }
+    if (data.containsKey('tenure_months')) {
+      context.handle(
+        _tenureMonthsMeta,
+        tenureMonths.isAcceptableOrUnknown(
+          data['tenure_months']!,
+          _tenureMonthsMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -258,6 +397,34 @@ class $AccountsTable extends Accounts with TableInfo<$AccountsTable, Account> {
         DriftSqlType.bool,
         data['${effectivePrefix}archived'],
       )!,
+      creditLimitPaise: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}credit_limit_paise'],
+      ),
+      statementDay: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}statement_day'],
+      ),
+      dueDay: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}due_day'],
+      ),
+      principalPaise: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}principal_paise'],
+      ),
+      interestRateBp: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}interest_rate_bp'],
+      ),
+      emiPaise: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}emi_paise'],
+      ),
+      tenureMonths: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}tenure_months'],
+      ),
     );
   }
 
@@ -283,6 +450,13 @@ class Account extends DataClass implements Insertable<Account> {
   final String matchHints;
   final int sortOrder;
   final bool archived;
+  final int? creditLimitPaise;
+  final int? statementDay;
+  final int? dueDay;
+  final int? principalPaise;
+  final int? interestRateBp;
+  final int? emiPaise;
+  final int? tenureMonths;
   const Account({
     required this.id,
     required this.name,
@@ -294,6 +468,13 @@ class Account extends DataClass implements Insertable<Account> {
     required this.matchHints,
     required this.sortOrder,
     required this.archived,
+    this.creditLimitPaise,
+    this.statementDay,
+    this.dueDay,
+    this.principalPaise,
+    this.interestRateBp,
+    this.emiPaise,
+    this.tenureMonths,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -310,6 +491,27 @@ class Account extends DataClass implements Insertable<Account> {
     map['match_hints'] = Variable<String>(matchHints);
     map['sort_order'] = Variable<int>(sortOrder);
     map['archived'] = Variable<bool>(archived);
+    if (!nullToAbsent || creditLimitPaise != null) {
+      map['credit_limit_paise'] = Variable<int>(creditLimitPaise);
+    }
+    if (!nullToAbsent || statementDay != null) {
+      map['statement_day'] = Variable<int>(statementDay);
+    }
+    if (!nullToAbsent || dueDay != null) {
+      map['due_day'] = Variable<int>(dueDay);
+    }
+    if (!nullToAbsent || principalPaise != null) {
+      map['principal_paise'] = Variable<int>(principalPaise);
+    }
+    if (!nullToAbsent || interestRateBp != null) {
+      map['interest_rate_bp'] = Variable<int>(interestRateBp);
+    }
+    if (!nullToAbsent || emiPaise != null) {
+      map['emi_paise'] = Variable<int>(emiPaise);
+    }
+    if (!nullToAbsent || tenureMonths != null) {
+      map['tenure_months'] = Variable<int>(tenureMonths);
+    }
     return map;
   }
 
@@ -325,6 +527,27 @@ class Account extends DataClass implements Insertable<Account> {
       matchHints: Value(matchHints),
       sortOrder: Value(sortOrder),
       archived: Value(archived),
+      creditLimitPaise: creditLimitPaise == null && nullToAbsent
+          ? const Value.absent()
+          : Value(creditLimitPaise),
+      statementDay: statementDay == null && nullToAbsent
+          ? const Value.absent()
+          : Value(statementDay),
+      dueDay: dueDay == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dueDay),
+      principalPaise: principalPaise == null && nullToAbsent
+          ? const Value.absent()
+          : Value(principalPaise),
+      interestRateBp: interestRateBp == null && nullToAbsent
+          ? const Value.absent()
+          : Value(interestRateBp),
+      emiPaise: emiPaise == null && nullToAbsent
+          ? const Value.absent()
+          : Value(emiPaise),
+      tenureMonths: tenureMonths == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tenureMonths),
     );
   }
 
@@ -348,6 +571,13 @@ class Account extends DataClass implements Insertable<Account> {
       matchHints: serializer.fromJson<String>(json['matchHints']),
       sortOrder: serializer.fromJson<int>(json['sortOrder']),
       archived: serializer.fromJson<bool>(json['archived']),
+      creditLimitPaise: serializer.fromJson<int?>(json['creditLimitPaise']),
+      statementDay: serializer.fromJson<int?>(json['statementDay']),
+      dueDay: serializer.fromJson<int?>(json['dueDay']),
+      principalPaise: serializer.fromJson<int?>(json['principalPaise']),
+      interestRateBp: serializer.fromJson<int?>(json['interestRateBp']),
+      emiPaise: serializer.fromJson<int?>(json['emiPaise']),
+      tenureMonths: serializer.fromJson<int?>(json['tenureMonths']),
     );
   }
   @override
@@ -366,6 +596,13 @@ class Account extends DataClass implements Insertable<Account> {
       'matchHints': serializer.toJson<String>(matchHints),
       'sortOrder': serializer.toJson<int>(sortOrder),
       'archived': serializer.toJson<bool>(archived),
+      'creditLimitPaise': serializer.toJson<int?>(creditLimitPaise),
+      'statementDay': serializer.toJson<int?>(statementDay),
+      'dueDay': serializer.toJson<int?>(dueDay),
+      'principalPaise': serializer.toJson<int?>(principalPaise),
+      'interestRateBp': serializer.toJson<int?>(interestRateBp),
+      'emiPaise': serializer.toJson<int?>(emiPaise),
+      'tenureMonths': serializer.toJson<int?>(tenureMonths),
     };
   }
 
@@ -380,6 +617,13 @@ class Account extends DataClass implements Insertable<Account> {
     String? matchHints,
     int? sortOrder,
     bool? archived,
+    Value<int?> creditLimitPaise = const Value.absent(),
+    Value<int?> statementDay = const Value.absent(),
+    Value<int?> dueDay = const Value.absent(),
+    Value<int?> principalPaise = const Value.absent(),
+    Value<int?> interestRateBp = const Value.absent(),
+    Value<int?> emiPaise = const Value.absent(),
+    Value<int?> tenureMonths = const Value.absent(),
   }) => Account(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -391,6 +635,19 @@ class Account extends DataClass implements Insertable<Account> {
     matchHints: matchHints ?? this.matchHints,
     sortOrder: sortOrder ?? this.sortOrder,
     archived: archived ?? this.archived,
+    creditLimitPaise: creditLimitPaise.present
+        ? creditLimitPaise.value
+        : this.creditLimitPaise,
+    statementDay: statementDay.present ? statementDay.value : this.statementDay,
+    dueDay: dueDay.present ? dueDay.value : this.dueDay,
+    principalPaise: principalPaise.present
+        ? principalPaise.value
+        : this.principalPaise,
+    interestRateBp: interestRateBp.present
+        ? interestRateBp.value
+        : this.interestRateBp,
+    emiPaise: emiPaise.present ? emiPaise.value : this.emiPaise,
+    tenureMonths: tenureMonths.present ? tenureMonths.value : this.tenureMonths,
   );
   Account copyWithCompanion(AccountsCompanion data) {
     return Account(
@@ -408,6 +665,23 @@ class Account extends DataClass implements Insertable<Account> {
           : this.matchHints,
       sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
       archived: data.archived.present ? data.archived.value : this.archived,
+      creditLimitPaise: data.creditLimitPaise.present
+          ? data.creditLimitPaise.value
+          : this.creditLimitPaise,
+      statementDay: data.statementDay.present
+          ? data.statementDay.value
+          : this.statementDay,
+      dueDay: data.dueDay.present ? data.dueDay.value : this.dueDay,
+      principalPaise: data.principalPaise.present
+          ? data.principalPaise.value
+          : this.principalPaise,
+      interestRateBp: data.interestRateBp.present
+          ? data.interestRateBp.value
+          : this.interestRateBp,
+      emiPaise: data.emiPaise.present ? data.emiPaise.value : this.emiPaise,
+      tenureMonths: data.tenureMonths.present
+          ? data.tenureMonths.value
+          : this.tenureMonths,
     );
   }
 
@@ -423,7 +697,14 @@ class Account extends DataClass implements Insertable<Account> {
           ..write('icon: $icon, ')
           ..write('matchHints: $matchHints, ')
           ..write('sortOrder: $sortOrder, ')
-          ..write('archived: $archived')
+          ..write('archived: $archived, ')
+          ..write('creditLimitPaise: $creditLimitPaise, ')
+          ..write('statementDay: $statementDay, ')
+          ..write('dueDay: $dueDay, ')
+          ..write('principalPaise: $principalPaise, ')
+          ..write('interestRateBp: $interestRateBp, ')
+          ..write('emiPaise: $emiPaise, ')
+          ..write('tenureMonths: $tenureMonths')
           ..write(')'))
         .toString();
   }
@@ -440,6 +721,13 @@ class Account extends DataClass implements Insertable<Account> {
     matchHints,
     sortOrder,
     archived,
+    creditLimitPaise,
+    statementDay,
+    dueDay,
+    principalPaise,
+    interestRateBp,
+    emiPaise,
+    tenureMonths,
   );
   @override
   bool operator ==(Object other) =>
@@ -454,7 +742,14 @@ class Account extends DataClass implements Insertable<Account> {
           other.icon == this.icon &&
           other.matchHints == this.matchHints &&
           other.sortOrder == this.sortOrder &&
-          other.archived == this.archived);
+          other.archived == this.archived &&
+          other.creditLimitPaise == this.creditLimitPaise &&
+          other.statementDay == this.statementDay &&
+          other.dueDay == this.dueDay &&
+          other.principalPaise == this.principalPaise &&
+          other.interestRateBp == this.interestRateBp &&
+          other.emiPaise == this.emiPaise &&
+          other.tenureMonths == this.tenureMonths);
 }
 
 class AccountsCompanion extends UpdateCompanion<Account> {
@@ -468,6 +763,13 @@ class AccountsCompanion extends UpdateCompanion<Account> {
   final Value<String> matchHints;
   final Value<int> sortOrder;
   final Value<bool> archived;
+  final Value<int?> creditLimitPaise;
+  final Value<int?> statementDay;
+  final Value<int?> dueDay;
+  final Value<int?> principalPaise;
+  final Value<int?> interestRateBp;
+  final Value<int?> emiPaise;
+  final Value<int?> tenureMonths;
   const AccountsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -479,6 +781,13 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     this.matchHints = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.archived = const Value.absent(),
+    this.creditLimitPaise = const Value.absent(),
+    this.statementDay = const Value.absent(),
+    this.dueDay = const Value.absent(),
+    this.principalPaise = const Value.absent(),
+    this.interestRateBp = const Value.absent(),
+    this.emiPaise = const Value.absent(),
+    this.tenureMonths = const Value.absent(),
   });
   AccountsCompanion.insert({
     this.id = const Value.absent(),
@@ -491,6 +800,13 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     this.matchHints = const Value.absent(),
     this.sortOrder = const Value.absent(),
     this.archived = const Value.absent(),
+    this.creditLimitPaise = const Value.absent(),
+    this.statementDay = const Value.absent(),
+    this.dueDay = const Value.absent(),
+    this.principalPaise = const Value.absent(),
+    this.interestRateBp = const Value.absent(),
+    this.emiPaise = const Value.absent(),
+    this.tenureMonths = const Value.absent(),
   }) : name = Value(name),
        type = Value(type),
        color = Value(color),
@@ -506,6 +822,13 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     Expression<String>? matchHints,
     Expression<int>? sortOrder,
     Expression<bool>? archived,
+    Expression<int>? creditLimitPaise,
+    Expression<int>? statementDay,
+    Expression<int>? dueDay,
+    Expression<int>? principalPaise,
+    Expression<int>? interestRateBp,
+    Expression<int>? emiPaise,
+    Expression<int>? tenureMonths,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -519,6 +842,13 @@ class AccountsCompanion extends UpdateCompanion<Account> {
       if (matchHints != null) 'match_hints': matchHints,
       if (sortOrder != null) 'sort_order': sortOrder,
       if (archived != null) 'archived': archived,
+      if (creditLimitPaise != null) 'credit_limit_paise': creditLimitPaise,
+      if (statementDay != null) 'statement_day': statementDay,
+      if (dueDay != null) 'due_day': dueDay,
+      if (principalPaise != null) 'principal_paise': principalPaise,
+      if (interestRateBp != null) 'interest_rate_bp': interestRateBp,
+      if (emiPaise != null) 'emi_paise': emiPaise,
+      if (tenureMonths != null) 'tenure_months': tenureMonths,
     });
   }
 
@@ -533,6 +863,13 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     Value<String>? matchHints,
     Value<int>? sortOrder,
     Value<bool>? archived,
+    Value<int?>? creditLimitPaise,
+    Value<int?>? statementDay,
+    Value<int?>? dueDay,
+    Value<int?>? principalPaise,
+    Value<int?>? interestRateBp,
+    Value<int?>? emiPaise,
+    Value<int?>? tenureMonths,
   }) {
     return AccountsCompanion(
       id: id ?? this.id,
@@ -545,6 +882,13 @@ class AccountsCompanion extends UpdateCompanion<Account> {
       matchHints: matchHints ?? this.matchHints,
       sortOrder: sortOrder ?? this.sortOrder,
       archived: archived ?? this.archived,
+      creditLimitPaise: creditLimitPaise ?? this.creditLimitPaise,
+      statementDay: statementDay ?? this.statementDay,
+      dueDay: dueDay ?? this.dueDay,
+      principalPaise: principalPaise ?? this.principalPaise,
+      interestRateBp: interestRateBp ?? this.interestRateBp,
+      emiPaise: emiPaise ?? this.emiPaise,
+      tenureMonths: tenureMonths ?? this.tenureMonths,
     );
   }
 
@@ -583,6 +927,27 @@ class AccountsCompanion extends UpdateCompanion<Account> {
     if (archived.present) {
       map['archived'] = Variable<bool>(archived.value);
     }
+    if (creditLimitPaise.present) {
+      map['credit_limit_paise'] = Variable<int>(creditLimitPaise.value);
+    }
+    if (statementDay.present) {
+      map['statement_day'] = Variable<int>(statementDay.value);
+    }
+    if (dueDay.present) {
+      map['due_day'] = Variable<int>(dueDay.value);
+    }
+    if (principalPaise.present) {
+      map['principal_paise'] = Variable<int>(principalPaise.value);
+    }
+    if (interestRateBp.present) {
+      map['interest_rate_bp'] = Variable<int>(interestRateBp.value);
+    }
+    if (emiPaise.present) {
+      map['emi_paise'] = Variable<int>(emiPaise.value);
+    }
+    if (tenureMonths.present) {
+      map['tenure_months'] = Variable<int>(tenureMonths.value);
+    }
     return map;
   }
 
@@ -598,7 +963,14 @@ class AccountsCompanion extends UpdateCompanion<Account> {
           ..write('icon: $icon, ')
           ..write('matchHints: $matchHints, ')
           ..write('sortOrder: $sortOrder, ')
-          ..write('archived: $archived')
+          ..write('archived: $archived, ')
+          ..write('creditLimitPaise: $creditLimitPaise, ')
+          ..write('statementDay: $statementDay, ')
+          ..write('dueDay: $dueDay, ')
+          ..write('principalPaise: $principalPaise, ')
+          ..write('interestRateBp: $interestRateBp, ')
+          ..write('emiPaise: $emiPaise, ')
+          ..write('tenureMonths: $tenureMonths')
           ..write(')'))
         .toString();
   }
@@ -3209,6 +3581,20 @@ class $RecurringsTable extends Recurrings
       'REFERENCES accounts (id)',
     ),
   );
+  static const VerificationMeta _toAccountIdMeta = const VerificationMeta(
+    'toAccountId',
+  );
+  @override
+  late final GeneratedColumn<int> toAccountId = GeneratedColumn<int>(
+    'to_account_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES accounts (id)',
+    ),
+  );
   static const VerificationMeta _categoryIdMeta = const VerificationMeta(
     'categoryId',
   );
@@ -3316,6 +3702,7 @@ class $RecurringsTable extends Recurrings
     amountPaise,
     variableAmount,
     accountId,
+    toAccountId,
     categoryId,
     startDate,
     unit,
@@ -3376,6 +3763,15 @@ class $RecurringsTable extends Recurrings
       );
     } else if (isInserting) {
       context.missing(_accountIdMeta);
+    }
+    if (data.containsKey('to_account_id')) {
+      context.handle(
+        _toAccountIdMeta,
+        toAccountId.isAcceptableOrUnknown(
+          data['to_account_id']!,
+          _toAccountIdMeta,
+        ),
+      );
     }
     if (data.containsKey('category_id')) {
       context.handle(
@@ -3453,6 +3849,10 @@ class $RecurringsTable extends Recurrings
         DriftSqlType.int,
         data['${effectivePrefix}account_id'],
       )!,
+      toAccountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}to_account_id'],
+      ),
       categoryId: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}category_id'],
@@ -3522,6 +3922,9 @@ class Recurring extends DataClass implements Insertable<Recurring> {
   final int amountPaise;
   final bool variableAmount;
   final int accountId;
+
+  /// For transfers, e.g. an EMI paid into a loan account (v5).
+  final int? toAccountId;
   final int? categoryId;
   final DateTime startDate;
   final RepeatUnit unit;
@@ -3540,6 +3943,7 @@ class Recurring extends DataClass implements Insertable<Recurring> {
     required this.amountPaise,
     required this.variableAmount,
     required this.accountId,
+    this.toAccountId,
     this.categoryId,
     required this.startDate,
     required this.unit,
@@ -3563,6 +3967,9 @@ class Recurring extends DataClass implements Insertable<Recurring> {
     map['amount_paise'] = Variable<int>(amountPaise);
     map['variable_amount'] = Variable<bool>(variableAmount);
     map['account_id'] = Variable<int>(accountId);
+    if (!nullToAbsent || toAccountId != null) {
+      map['to_account_id'] = Variable<int>(toAccountId);
+    }
     if (!nullToAbsent || categoryId != null) {
       map['category_id'] = Variable<int>(categoryId);
     }
@@ -3599,6 +4006,9 @@ class Recurring extends DataClass implements Insertable<Recurring> {
       amountPaise: Value(amountPaise),
       variableAmount: Value(variableAmount),
       accountId: Value(accountId),
+      toAccountId: toAccountId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(toAccountId),
       categoryId: categoryId == null && nullToAbsent
           ? const Value.absent()
           : Value(categoryId),
@@ -3629,6 +4039,7 @@ class Recurring extends DataClass implements Insertable<Recurring> {
       amountPaise: serializer.fromJson<int>(json['amountPaise']),
       variableAmount: serializer.fromJson<bool>(json['variableAmount']),
       accountId: serializer.fromJson<int>(json['accountId']),
+      toAccountId: serializer.fromJson<int?>(json['toAccountId']),
       categoryId: serializer.fromJson<int?>(json['categoryId']),
       startDate: serializer.fromJson<DateTime>(json['startDate']),
       unit: $RecurringsTable.$converterunit.fromJson(
@@ -3658,6 +4069,7 @@ class Recurring extends DataClass implements Insertable<Recurring> {
       'amountPaise': serializer.toJson<int>(amountPaise),
       'variableAmount': serializer.toJson<bool>(variableAmount),
       'accountId': serializer.toJson<int>(accountId),
+      'toAccountId': serializer.toJson<int?>(toAccountId),
       'categoryId': serializer.toJson<int?>(categoryId),
       'startDate': serializer.toJson<DateTime>(startDate),
       'unit': serializer.toJson<String>(
@@ -3683,6 +4095,7 @@ class Recurring extends DataClass implements Insertable<Recurring> {
     int? amountPaise,
     bool? variableAmount,
     int? accountId,
+    Value<int?> toAccountId = const Value.absent(),
     Value<int?> categoryId = const Value.absent(),
     DateTime? startDate,
     RepeatUnit? unit,
@@ -3699,6 +4112,7 @@ class Recurring extends DataClass implements Insertable<Recurring> {
     amountPaise: amountPaise ?? this.amountPaise,
     variableAmount: variableAmount ?? this.variableAmount,
     accountId: accountId ?? this.accountId,
+    toAccountId: toAccountId.present ? toAccountId.value : this.toAccountId,
     categoryId: categoryId.present ? categoryId.value : this.categoryId,
     startDate: startDate ?? this.startDate,
     unit: unit ?? this.unit,
@@ -3721,6 +4135,9 @@ class Recurring extends DataClass implements Insertable<Recurring> {
           ? data.variableAmount.value
           : this.variableAmount,
       accountId: data.accountId.present ? data.accountId.value : this.accountId,
+      toAccountId: data.toAccountId.present
+          ? data.toAccountId.value
+          : this.toAccountId,
       categoryId: data.categoryId.present
           ? data.categoryId.value
           : this.categoryId,
@@ -3746,6 +4163,7 @@ class Recurring extends DataClass implements Insertable<Recurring> {
           ..write('amountPaise: $amountPaise, ')
           ..write('variableAmount: $variableAmount, ')
           ..write('accountId: $accountId, ')
+          ..write('toAccountId: $toAccountId, ')
           ..write('categoryId: $categoryId, ')
           ..write('startDate: $startDate, ')
           ..write('unit: $unit, ')
@@ -3767,6 +4185,7 @@ class Recurring extends DataClass implements Insertable<Recurring> {
     amountPaise,
     variableAmount,
     accountId,
+    toAccountId,
     categoryId,
     startDate,
     unit,
@@ -3787,6 +4206,7 @@ class Recurring extends DataClass implements Insertable<Recurring> {
           other.amountPaise == this.amountPaise &&
           other.variableAmount == this.variableAmount &&
           other.accountId == this.accountId &&
+          other.toAccountId == this.toAccountId &&
           other.categoryId == this.categoryId &&
           other.startDate == this.startDate &&
           other.unit == this.unit &&
@@ -3805,6 +4225,7 @@ class RecurringsCompanion extends UpdateCompanion<Recurring> {
   final Value<int> amountPaise;
   final Value<bool> variableAmount;
   final Value<int> accountId;
+  final Value<int?> toAccountId;
   final Value<int?> categoryId;
   final Value<DateTime> startDate;
   final Value<RepeatUnit> unit;
@@ -3821,6 +4242,7 @@ class RecurringsCompanion extends UpdateCompanion<Recurring> {
     this.amountPaise = const Value.absent(),
     this.variableAmount = const Value.absent(),
     this.accountId = const Value.absent(),
+    this.toAccountId = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.startDate = const Value.absent(),
     this.unit = const Value.absent(),
@@ -3838,6 +4260,7 @@ class RecurringsCompanion extends UpdateCompanion<Recurring> {
     required int amountPaise,
     this.variableAmount = const Value.absent(),
     required int accountId,
+    this.toAccountId = const Value.absent(),
     this.categoryId = const Value.absent(),
     required DateTime startDate,
     required RepeatUnit unit,
@@ -3860,6 +4283,7 @@ class RecurringsCompanion extends UpdateCompanion<Recurring> {
     Expression<int>? amountPaise,
     Expression<bool>? variableAmount,
     Expression<int>? accountId,
+    Expression<int>? toAccountId,
     Expression<int>? categoryId,
     Expression<DateTime>? startDate,
     Expression<String>? unit,
@@ -3877,6 +4301,7 @@ class RecurringsCompanion extends UpdateCompanion<Recurring> {
       if (amountPaise != null) 'amount_paise': amountPaise,
       if (variableAmount != null) 'variable_amount': variableAmount,
       if (accountId != null) 'account_id': accountId,
+      if (toAccountId != null) 'to_account_id': toAccountId,
       if (categoryId != null) 'category_id': categoryId,
       if (startDate != null) 'start_date': startDate,
       if (unit != null) 'unit': unit,
@@ -3896,6 +4321,7 @@ class RecurringsCompanion extends UpdateCompanion<Recurring> {
     Value<int>? amountPaise,
     Value<bool>? variableAmount,
     Value<int>? accountId,
+    Value<int?>? toAccountId,
     Value<int?>? categoryId,
     Value<DateTime>? startDate,
     Value<RepeatUnit>? unit,
@@ -3913,6 +4339,7 @@ class RecurringsCompanion extends UpdateCompanion<Recurring> {
       amountPaise: amountPaise ?? this.amountPaise,
       variableAmount: variableAmount ?? this.variableAmount,
       accountId: accountId ?? this.accountId,
+      toAccountId: toAccountId ?? this.toAccountId,
       categoryId: categoryId ?? this.categoryId,
       startDate: startDate ?? this.startDate,
       unit: unit ?? this.unit,
@@ -3947,6 +4374,9 @@ class RecurringsCompanion extends UpdateCompanion<Recurring> {
     }
     if (accountId.present) {
       map['account_id'] = Variable<int>(accountId.value);
+    }
+    if (toAccountId.present) {
+      map['to_account_id'] = Variable<int>(toAccountId.value);
     }
     if (categoryId.present) {
       map['category_id'] = Variable<int>(categoryId.value);
@@ -3993,6 +4423,7 @@ class RecurringsCompanion extends UpdateCompanion<Recurring> {
           ..write('amountPaise: $amountPaise, ')
           ..write('variableAmount: $variableAmount, ')
           ..write('accountId: $accountId, ')
+          ..write('toAccountId: $toAccountId, ')
           ..write('categoryId: $categoryId, ')
           ..write('startDate: $startDate, ')
           ..write('unit: $unit, ')
@@ -4048,6 +4479,13 @@ typedef $$AccountsTableCreateCompanionBuilder = AccountsCompanion Function({
   Value<String> matchHints,
   Value<int> sortOrder,
   Value<bool> archived,
+  Value<int?> creditLimitPaise,
+  Value<int?> statementDay,
+  Value<int?> dueDay,
+  Value<int?> principalPaise,
+  Value<int?> interestRateBp,
+  Value<int?> emiPaise,
+  Value<int?> tenureMonths,
 });
 typedef $$AccountsTableUpdateCompanionBuilder = AccountsCompanion Function({
   Value<int> id,
@@ -4060,6 +4498,13 @@ typedef $$AccountsTableUpdateCompanionBuilder = AccountsCompanion Function({
   Value<String> matchHints,
   Value<int> sortOrder,
   Value<bool> archived,
+  Value<int?> creditLimitPaise,
+  Value<int?> statementDay,
+  Value<int?> dueDay,
+  Value<int?> principalPaise,
+  Value<int?> interestRateBp,
+  Value<int?> emiPaise,
+  Value<int?> tenureMonths,
 });
 
 final class $$AccountsTableReferences
@@ -4118,24 +4563,6 @@ final class $$AccountsTableReferences
     ).filter((f) => f.accountId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_rulesRefsTable($_db));
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
-    );
-  }
-
-  static MultiTypedResultKey<$RecurringsTable, List<Recurring>>
-  _recurringsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
-    db.recurrings,
-    aliasName: 'accounts__id__recurrings__account_id',
-  );
-
-  $$RecurringsTableProcessedTableManager get recurringsRefs {
-    final manager = $$RecurringsTableTableManager(
-      $_db,
-      $_db.recurrings,
-    ).filter((f) => f.accountId.id.sqlEquals($_itemColumn<int>('id')!));
-
-    final cache = $_typedResult.readTableOrNull(_recurringsRefsTable($_db));
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -4199,6 +4626,41 @@ class $$AccountsTableFilterComposer
 
   ColumnFilters<bool> get archived => $composableBuilder(
     column: $table.archived,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get creditLimitPaise => $composableBuilder(
+    column: $table.creditLimitPaise,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get statementDay => $composableBuilder(
+    column: $table.statementDay,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get dueDay => $composableBuilder(
+    column: $table.dueDay,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get principalPaise => $composableBuilder(
+    column: $table.principalPaise,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get interestRateBp => $composableBuilder(
+    column: $table.interestRateBp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get emiPaise => $composableBuilder(
+    column: $table.emiPaise,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get tenureMonths => $composableBuilder(
+    column: $table.tenureMonths,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4276,31 +4738,6 @@ class $$AccountsTableFilterComposer
     );
     return f(composer);
   }
-
-  Expression<bool> recurringsRefs(
-    Expression<bool> Function($$RecurringsTableFilterComposer f) f,
-  ) {
-    final $$RecurringsTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.recurrings,
-      getReferencedColumn: (t) => t.accountId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$RecurringsTableFilterComposer(
-            $db: $db,
-            $table: $db.recurrings,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
 }
 
 class $$AccountsTableOrderingComposer
@@ -4361,6 +4798,41 @@ class $$AccountsTableOrderingComposer
     column: $table.archived,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get creditLimitPaise => $composableBuilder(
+    column: $table.creditLimitPaise,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get statementDay => $composableBuilder(
+    column: $table.statementDay,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get dueDay => $composableBuilder(
+    column: $table.dueDay,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get principalPaise => $composableBuilder(
+    column: $table.principalPaise,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get interestRateBp => $composableBuilder(
+    column: $table.interestRateBp,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get emiPaise => $composableBuilder(
+    column: $table.emiPaise,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get tenureMonths => $composableBuilder(
+    column: $table.tenureMonths,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AccountsTableAnnotationComposer
@@ -4405,6 +4877,37 @@ class $$AccountsTableAnnotationComposer
 
   GeneratedColumn<bool> get archived =>
       $composableBuilder(column: $table.archived, builder: (column) => column);
+
+  GeneratedColumn<int> get creditLimitPaise => $composableBuilder(
+    column: $table.creditLimitPaise,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get statementDay => $composableBuilder(
+    column: $table.statementDay,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get dueDay =>
+      $composableBuilder(column: $table.dueDay, builder: (column) => column);
+
+  GeneratedColumn<int> get principalPaise => $composableBuilder(
+    column: $table.principalPaise,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get interestRateBp => $composableBuilder(
+    column: $table.interestRateBp,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get emiPaise =>
+      $composableBuilder(column: $table.emiPaise, builder: (column) => column);
+
+  GeneratedColumn<int> get tenureMonths => $composableBuilder(
+    column: $table.tenureMonths,
+    builder: (column) => column,
+  );
 
   Expression<T> outgoingTransactions<T extends Object>(
     Expression<T> Function($$TransactionsTableAnnotationComposer a) f,
@@ -4480,31 +4983,6 @@ class $$AccountsTableAnnotationComposer
     );
     return f(composer);
   }
-
-  Expression<T> recurringsRefs<T extends Object>(
-    Expression<T> Function($$RecurringsTableAnnotationComposer a) f,
-  ) {
-    final $$RecurringsTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.id,
-      referencedTable: $db.recurrings,
-      getReferencedColumn: (t) => t.accountId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$RecurringsTableAnnotationComposer(
-            $db: $db,
-            $table: $db.recurrings,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
 }
 
 class $$AccountsTableTableManager
@@ -4524,7 +5002,6 @@ class $$AccountsTableTableManager
             bool outgoingTransactions,
             bool incomingTransfers,
             bool rulesRefs,
-            bool recurringsRefs,
           })
         > {
   $$AccountsTableTableManager(_$AppDatabase db, $AccountsTable table)
@@ -4550,6 +5027,13 @@ class $$AccountsTableTableManager
                 Value<String> matchHints = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<bool> archived = const Value.absent(),
+                Value<int?> creditLimitPaise = const Value.absent(),
+                Value<int?> statementDay = const Value.absent(),
+                Value<int?> dueDay = const Value.absent(),
+                Value<int?> principalPaise = const Value.absent(),
+                Value<int?> interestRateBp = const Value.absent(),
+                Value<int?> emiPaise = const Value.absent(),
+                Value<int?> tenureMonths = const Value.absent(),
               }) => AccountsCompanion(
                 id: id,
                 name: name,
@@ -4561,6 +5045,13 @@ class $$AccountsTableTableManager
                 matchHints: matchHints,
                 sortOrder: sortOrder,
                 archived: archived,
+                creditLimitPaise: creditLimitPaise,
+                statementDay: statementDay,
+                dueDay: dueDay,
+                principalPaise: principalPaise,
+                interestRateBp: interestRateBp,
+                emiPaise: emiPaise,
+                tenureMonths: tenureMonths,
               ),
           createCompanionCallback:
               ({
@@ -4574,6 +5065,13 @@ class $$AccountsTableTableManager
                 Value<String> matchHints = const Value.absent(),
                 Value<int> sortOrder = const Value.absent(),
                 Value<bool> archived = const Value.absent(),
+                Value<int?> creditLimitPaise = const Value.absent(),
+                Value<int?> statementDay = const Value.absent(),
+                Value<int?> dueDay = const Value.absent(),
+                Value<int?> principalPaise = const Value.absent(),
+                Value<int?> interestRateBp = const Value.absent(),
+                Value<int?> emiPaise = const Value.absent(),
+                Value<int?> tenureMonths = const Value.absent(),
               }) => AccountsCompanion.insert(
                 id: id,
                 name: name,
@@ -4585,6 +5083,13 @@ class $$AccountsTableTableManager
                 matchHints: matchHints,
                 sortOrder: sortOrder,
                 archived: archived,
+                creditLimitPaise: creditLimitPaise,
+                statementDay: statementDay,
+                dueDay: dueDay,
+                principalPaise: principalPaise,
+                interestRateBp: interestRateBp,
+                emiPaise: emiPaise,
+                tenureMonths: tenureMonths,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -4599,7 +5104,6 @@ class $$AccountsTableTableManager
                 outgoingTransactions = false,
                 incomingTransfers = false,
                 rulesRefs = false,
-                recurringsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -4607,7 +5111,6 @@ class $$AccountsTableTableManager
                     if (outgoingTransactions) db.transactions,
                     if (incomingTransfers) db.transactions,
                     if (rulesRefs) db.rules,
-                    if (recurringsRefs) db.recurrings,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -4675,27 +5178,6 @@ class $$AccountsTableTableManager
                               ),
                           typedResults: items,
                         ),
-                      if (recurringsRefs)
-                        await $_getPrefetchedData<
-                          Account,
-                          $AccountsTable,
-                          Recurring
-                        >(
-                          currentTable: table,
-                          referencedTable: $$AccountsTableReferences
-                              ._recurringsRefsTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$AccountsTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).recurringsRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.accountId == item.id,
-                              ),
-                          typedResults: items,
-                        ),
                     ];
                   },
                 );
@@ -4720,7 +5202,6 @@ typedef $$AccountsTableProcessedTableManager =
         bool outgoingTransactions,
         bool incomingTransfers,
         bool rulesRefs,
-        bool recurringsRefs,
       })
     >;
 typedef $$CategoriesTableCreateCompanionBuilder = CategoriesCompanion Function({
@@ -7091,6 +7572,7 @@ typedef $$RecurringsTableCreateCompanionBuilder = RecurringsCompanion Function({
   required int amountPaise,
   Value<bool> variableAmount,
   required int accountId,
+  Value<int?> toAccountId,
   Value<int?> categoryId,
   required DateTime startDate,
   required RepeatUnit unit,
@@ -7108,6 +7590,7 @@ typedef $$RecurringsTableUpdateCompanionBuilder = RecurringsCompanion Function({
   Value<int> amountPaise,
   Value<bool> variableAmount,
   Value<int> accountId,
+  Value<int?> toAccountId,
   Value<int?> categoryId,
   Value<DateTime> startDate,
   Value<RepeatUnit> unit,
@@ -7134,6 +7617,23 @@ final class $$RecurringsTableReferences
       $_db.accounts,
     ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_accountIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $AccountsTable _toAccountIdTable(_$AppDatabase db) =>
+      db.accounts.createAlias('recurrings__to_account_id__accounts__id');
+
+  $$AccountsTableProcessedTableManager? get toAccountId {
+    final $_column = $_itemColumn<int>('to_account_id');
+    if ($_column == null) return null;
+    final manager = $$AccountsTableTableManager(
+      $_db,
+      $_db.accounts,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_toAccountIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -7240,6 +7740,29 @@ class $$RecurringsTableFilterComposer
     final $$AccountsTableFilterComposer composer = $composerBuilder(
       composer: this,
       getCurrentColumn: (t) => t.accountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableFilterComposer(
+            $db: $db,
+            $table: $db.accounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$AccountsTableFilterComposer get toAccountId {
+    final $$AccountsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.toAccountId,
       referencedTable: $db.accounts,
       getReferencedColumn: (t) => t.id,
       builder:
@@ -7380,6 +7903,29 @@ class $$RecurringsTableOrderingComposer
     return composer;
   }
 
+  $$AccountsTableOrderingComposer get toAccountId {
+    final $$AccountsTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.toAccountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableOrderingComposer(
+            $db: $db,
+            $table: $db.accounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
   $$CategoriesTableOrderingComposer get categoryId {
     final $$CategoriesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -7481,6 +8027,29 @@ class $$RecurringsTableAnnotationComposer
     return composer;
   }
 
+  $$AccountsTableAnnotationComposer get toAccountId {
+    final $$AccountsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.toAccountId,
+      referencedTable: $db.accounts,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AccountsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.accounts,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
   $$CategoriesTableAnnotationComposer get categoryId {
     final $$CategoriesTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -7518,7 +8087,11 @@ class $$RecurringsTableTableManager
           $$RecurringsTableUpdateCompanionBuilder,
           (Recurring, $$RecurringsTableReferences),
           Recurring,
-          PrefetchHooks Function({bool accountId, bool categoryId})
+          PrefetchHooks Function({
+            bool accountId,
+            bool toAccountId,
+            bool categoryId,
+          })
         > {
   $$RecurringsTableTableManager(_$AppDatabase db, $RecurringsTable table)
     : super(
@@ -7539,6 +8112,7 @@ class $$RecurringsTableTableManager
                 Value<int> amountPaise = const Value.absent(),
                 Value<bool> variableAmount = const Value.absent(),
                 Value<int> accountId = const Value.absent(),
+                Value<int?> toAccountId = const Value.absent(),
                 Value<int?> categoryId = const Value.absent(),
                 Value<DateTime> startDate = const Value.absent(),
                 Value<RepeatUnit> unit = const Value.absent(),
@@ -7555,6 +8129,7 @@ class $$RecurringsTableTableManager
                 amountPaise: amountPaise,
                 variableAmount: variableAmount,
                 accountId: accountId,
+                toAccountId: toAccountId,
                 categoryId: categoryId,
                 startDate: startDate,
                 unit: unit,
@@ -7573,6 +8148,7 @@ class $$RecurringsTableTableManager
                 required int amountPaise,
                 Value<bool> variableAmount = const Value.absent(),
                 required int accountId,
+                Value<int?> toAccountId = const Value.absent(),
                 Value<int?> categoryId = const Value.absent(),
                 required DateTime startDate,
                 required RepeatUnit unit,
@@ -7589,6 +8165,7 @@ class $$RecurringsTableTableManager
                 amountPaise: amountPaise,
                 variableAmount: variableAmount,
                 accountId: accountId,
+                toAccountId: toAccountId,
                 categoryId: categoryId,
                 startDate: startDate,
                 unit: unit,
@@ -7607,56 +8184,68 @@ class $$RecurringsTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({accountId = false, categoryId = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [],
-              addJoins:
-                  <
-                    T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic
-                    >
-                  >(state) {
-                    if (accountId) {
-                      state = state.withJoin(
-                        currentTable: table,
-                        currentColumn: table.accountId,
-                        referencedTable: $$RecurringsTableReferences
-                            ._accountIdTable(db),
-                        referencedColumn: $$RecurringsTableReferences
-                            ._accountIdTable(db)
-                            .id,
-                      ) as T;
-                    }
-                    if (categoryId) {
-                      state = state.withJoin(
-                        currentTable: table,
-                        currentColumn: table.categoryId,
-                        referencedTable: $$RecurringsTableReferences
-                            ._categoryIdTable(db),
-                        referencedColumn: $$RecurringsTableReferences
-                            ._categoryIdTable(db)
-                            .id,
-                      ) as T;
-                    }
+          prefetchHooksCallback:
+              ({accountId = false, toAccountId = false, categoryId = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (accountId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.accountId,
+                            referencedTable: $$RecurringsTableReferences
+                                ._accountIdTable(db),
+                            referencedColumn: $$RecurringsTableReferences
+                                ._accountIdTable(db)
+                                .id,
+                          ) as T;
+                        }
+                        if (toAccountId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.toAccountId,
+                            referencedTable: $$RecurringsTableReferences
+                                ._toAccountIdTable(db),
+                            referencedColumn: $$RecurringsTableReferences
+                                ._toAccountIdTable(db)
+                                .id,
+                          ) as T;
+                        }
+                        if (categoryId) {
+                          state = state.withJoin(
+                            currentTable: table,
+                            currentColumn: table.categoryId,
+                            referencedTable: $$RecurringsTableReferences
+                                ._categoryIdTable(db),
+                            referencedColumn: $$RecurringsTableReferences
+                                ._categoryIdTable(db)
+                                .id,
+                          ) as T;
+                        }
 
-                    return state;
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [];
                   },
-              getPrefetchedDataCallback: (items) async {
-                return [];
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -7673,7 +8262,11 @@ typedef $$RecurringsTableProcessedTableManager =
       $$RecurringsTableUpdateCompanionBuilder,
       (Recurring, $$RecurringsTableReferences),
       Recurring,
-      PrefetchHooks Function({bool accountId, bool categoryId})
+      PrefetchHooks Function({
+        bool accountId,
+        bool toAccountId,
+        bool categoryId,
+      })
     >;
 
 class $AppDatabaseManager {

@@ -1,5 +1,6 @@
 import 'package:tracks/data/tables.dart';
 import 'package:tracks/features/capture/domain/quick_add_parser.dart';
+import 'package:tracks/features/capture/domain/screenshot_parser.dart';
 import 'package:tracks/features/capture/domain/sms_parser.dart';
 
 /// Everything the Confirm Card needs to pre-fill, from any capture source.
@@ -22,8 +23,10 @@ class CaptureDraft {
     this.refNo,
     this.rawText,
     this.accountId,
+    this.toAccountId,
     this.categoryId,
     this.linkedRecurringId,
+    this.person,
   });
 
   final TxnType type;
@@ -52,10 +55,14 @@ class CaptureDraft {
 
   /// Known ids (e.g. paying a recurring bill) win over hints and guesses.
   final int? accountId;
+  final int? toAccountId;
   final int? categoryId;
 
   /// Saving marks this recurring item paid.
   final int? linkedRecurringId;
+
+  /// Someone money was lent to or borrowed from ("lent 2000 to ravi").
+  final String? person;
 }
 
 sealed class CaptureOutcome {
@@ -123,6 +130,56 @@ CaptureOutcome captureFromSharedText(
   }
 }
 
+/// OCR text of a shared payment screenshot (GPay / PhonePe / Paytm / bank
+/// app). Falls back to the SMS parser for screenshots of SMS.
+CaptureOutcome captureFromScreenshotText(String text) {
+  final raw = text.trim();
+  final shot = parsePaymentScreenshot(raw);
+  if (shot != null) {
+    final who = shot.merchant ?? shot.vpa;
+    return CaptureReady(
+      CaptureDraft(
+        type: shot.kind == SmsKind.credit ? TxnType.income : TxnType.expense,
+        source: TxnSource.screenshot,
+        amountPaise: shot.amountPaise,
+        note: who ?? '',
+        merchant: shot.vpa ?? shot.merchant,
+        date: shot.date,
+        accountLast4: shot.accountLast4,
+        bankHint: shot.bankHint,
+        categoryText: '${shot.merchant ?? ''} ${shot.vpa ?? ''}'.trim(),
+        refNo: shot.refNo,
+        rawText: raw,
+      ),
+    );
+  }
+  final sms = parseBankSms(raw);
+  if (sms.kind != SmsKind.ignore) {
+    final d = _fromSms(sms, raw);
+    return CaptureReady(
+      CaptureDraft(
+        type: d.type,
+        source: TxnSource.screenshot,
+        amountPaise: d.amountPaise,
+        note: d.note,
+        merchant: d.merchant,
+        date: d.date,
+        accountLast4: d.accountLast4,
+        bankHint: d.bankHint,
+        toAccountHint: d.toAccountHint,
+        toAccountLast4: d.toAccountLast4,
+        tags: d.tags,
+        categoryText: d.categoryText,
+        refNo: d.refNo,
+        rawText: raw,
+      ),
+    );
+  }
+  return const CaptureIgnored(
+    "Couldn't find a payment in that screenshot. Try the receipt screen.",
+  );
+}
+
 CaptureDraft _fromQuickAdd(QuickAddResult r, String raw) {
   final person = r.person;
   final desc = r.description;
@@ -152,6 +209,9 @@ CaptureDraft _fromQuickAdd(QuickAddResult r, String raw) {
     },
     categoryText: desc,
     rawText: raw,
+    person: r.kind == QuickAddKind.lent || r.kind == QuickAddKind.borrowed
+        ? person
+        : null,
   );
 }
 

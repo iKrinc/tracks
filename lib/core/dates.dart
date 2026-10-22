@@ -39,3 +39,7 @@ String weekdayShort(DateTime d) => _weekdays[d.weekday - 1];
 /// "21 Oct 2026"
 String shortDate(DateTime d) =>
     '${d.day} ${_months[d.month - 1].substring(0, 3)} ${d.year}';
+
+/// Whole calendar days from [from] to [to] (negative if [to] is earlier).
+int daysBetween(DateTime from, DateTime to) =>
+    dateOnly(to).difference(dateOnly(from)).inDays;

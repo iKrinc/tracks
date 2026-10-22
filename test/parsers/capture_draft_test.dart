@@ -142,4 +142,34 @@ void main() {
       );
     });
   });
+
+  group('screenshots', () {
+    test('GPay receipt becomes an expense from the screenshot source', () {
+      final o = captureFromScreenshotText(
+        '₹250\nPaid to SWIGGY\n21 Oct 2026, 8:42 pm\nUPI transaction ID\n'
+        '629412345678\nTo: SWIGGY\nswiggy@icici\nFrom: HDFC Bank •••• 1234',
+      );
+      final d = (o as CaptureReady).draft;
+      expect(d.source, TxnSource.screenshot);
+      expect(d.amountPaise, 25000);
+      expect(d.note, 'SWIGGY');
+      expect(d.accountLast4, '1234');
+      expect(d.refNo, '629412345678');
+    });
+
+    test('a screenshot of a bank SMS still works', () {
+      final o = captureFromScreenshotText(
+        'Dear UPI user A/C X5678 debited by 120.0 on date 20Oct26 trf to '
+        'RAVI KUMAR Refno 629398765432. -SBI',
+      );
+      expect((o as CaptureReady).draft.source, TxnSource.screenshot);
+    });
+
+    test('a random picture is ignored with a reason', () {
+      expect(
+        captureFromScreenshotText('Happy birthday!'),
+        isA<CaptureIgnored>(),
+      );
+    });
+  });
 }
