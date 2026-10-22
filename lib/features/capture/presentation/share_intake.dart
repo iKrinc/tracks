@@ -10,6 +10,7 @@ import 'package:tracks/data/app_database.dart';
 import 'package:tracks/features/backup/presentation/backup_actions.dart';
 import 'package:tracks/features/capture/data/ocr.dart';
 import 'package:tracks/features/capture/domain/capture_draft.dart';
+import 'package:tracks/features/capture/presentation/batch_review_sheet.dart';
 import 'package:tracks/features/capture/presentation/confirm_sheet.dart';
 
 /// Words that identify the user's accounts in typed or shared text.
@@ -34,6 +35,8 @@ Future<bool> presentCapture(
       return false;
     case CaptureReady(:final draft):
       return await showConfirmSheet(context, draft: draft) ?? false;
+    case CaptureMany(:final drafts):
+      return await showBatchReview(context, drafts) ?? false;
   }
 }
 
@@ -128,10 +131,10 @@ class _ShareIntakeState extends ConsumerState<ShareIntake> {
             duration: Duration(seconds: 2),
           ),
         );
-      String ocr;
+      List<String> ocr;
       try {
-        ocr = await readTextFromImage(image.path);
-      } on Exception {
+        ocr = await readTextBlocksFromImage(image.path);
+      } catch (_) {
         messenger.showSnackBar(
           const SnackBar(content: Text("Couldn't read that image")),
         );
@@ -139,7 +142,7 @@ class _ShareIntakeState extends ConsumerState<ShareIntake> {
       }
       if (!mounted) return;
       messenger.hideCurrentSnackBar();
-      await presentCapture(context, captureFromScreenshotText(ocr));
+      await presentCapture(context, captureFromScreenshotBlocks(ocr));
       return;
     }
     // Accounts may still be loading on a cold start.

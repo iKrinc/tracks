@@ -382,13 +382,14 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
         note: Value(_note.text.trim()),
         merchant: Value(d?.merchant),
         tags: Value(d?.tags ?? ''),
+        // The SMS/receipt's own time when it has one, else now.
         occurredAt: DateTime(
           _date.year,
           _date.month,
           _date.day,
-          now.hour,
-          now.minute,
-          now.second,
+          d?.time?.hour ?? now.hour,
+          d?.time?.minute ?? now.minute,
+          d?.time == null ? now.second : 0,
         ),
         source: Value(d?.source ?? TxnSource.manual),
         rawSourceText: Value(d?.rawText),

@@ -5,6 +5,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:tracks/features/capture/domain/screenshot_parser.dart';
 import 'package:tracks/features/capture/domain/sms_parser.dart';
 
+String _hm(({int hour, int minute})? t) => t == null
+    ? 'none'
+    : '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
 void main() {
   final fixtures = (jsonDecode(
     File('test/parsers/fixtures/payment_screenshots.json').readAsStringSync(),
@@ -27,6 +31,9 @@ void main() {
       expect(r.bankHint, e['bank'], reason: 'bank');
       expect(r.refNo, e['ref'], reason: 'ref');
       expect(r.date, DateTime.parse(e['date'] as String), reason: 'date');
+      if (e.containsKey('time')) {
+        expect(_hm(r.time), e['time'], reason: 'time');
+      }
     });
   }
 

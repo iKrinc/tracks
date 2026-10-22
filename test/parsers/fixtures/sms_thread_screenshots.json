@@ -1,0 +1,39 @@
+[
+  {
+    "id": "canara_thread_screenshot",
+    "blocks": [
+      "11:08",
+      "JX-CANBNK-S",
+      "Rs.1149.80 paid thru A/C XX3388 on\n03-12-25 10:11:02 to KIRAN\nSHEKAR, UPI Ref 570000000001. If\nnot done, SMS BLOCKUPI to\n9XXXXXXXXX.-Canara Bank",
+      "Saturday, 6 Dec • 3:59 pm",
+      "Rs.12.00 paid thru A/C XX3388 on\n06-12-25 15:59:28 to Mrs Lakshmi Dev,\nUPI Ref 570000000002. If not done,\nSMS BLOCKUPI to 9XXXXXXXXX.-Canara\nBank",
+      "Monday, 8 Dec • 1:27 pm",
+      "Rs.999.00 paid thru A/C XX3388 on\n08-12-25 13:26:54 to Google India Di,\nUPI Ref 534000000003. If not done, SMS\nBLOCKUPI to 9XXXXXXXXX.-Canara Bank",
+      "Sunday, 21 Dec • 6:08 pm",
+      "Rs.182.25 paid thru A/C XX3388 on\n21-12-25 18:07:32 to NAVEEN KUMA,\nUPI Ref 572000000004. If not done, SMS\nBLOCKUPI to 9XXXXXXXXX.-Canara Bank",
+      "Sender can't accept replies. Contact them\ndirectly. Learn more"
+    ],
+    "expect": [
+      {
+        "amountPaise": 114980,
+        "merchant": "KIRAN SHEKAR",
+        "ref": "570000000001"
+      },
+      {
+        "amountPaise": 1200,
+        "merchant": "Lakshmi Dev",
+        "ref": "570000000002"
+      },
+      {
+        "amountPaise": 99900,
+        "merchant": "Google India Di",
+        "ref": "534000000003"
+      },
+      {
+        "amountPaise": 18225,
+        "merchant": "NAVEEN KUMA",
+        "ref": "572000000004"
+      }
+    ]
+  }
+]

@@ -4,6 +4,10 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tracks/features/capture/domain/sms_parser.dart';
 
+String _hm(({int hour, int minute})? t) => t == null
+    ? 'none'
+    : '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+
 void main() {
   final fixtures = (jsonDecode(
     File('test/parsers/fixtures/bank_sms.json').readAsStringSync(),
@@ -32,6 +36,12 @@ void main() {
         );
         expect(r.refNo, e['ref'], reason: 'ref');
         expect(r.channel.name, e['channel'], reason: 'channel');
+        if (e.containsKey('time')) {
+          expect(_hm(r.time), e['time'], reason: 'time');
+        }
+        if (e.containsKey('counterAccount')) {
+          expect(r.counterAccountLast4, e['counterAccount'], reason: 'from');
+        }
         expect(
           r.flags.map((f) => f.name).toSet(),
           ((e['flags'] as List?) ?? const []).toSet(),
