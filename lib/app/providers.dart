@@ -5,6 +5,7 @@ import 'package:tracks/features/accounts/domain/balances.dart';
 import 'package:tracks/features/accounts/domain/credit_card.dart';
 import 'package:tracks/features/budgets/domain/budget_math.dart';
 import 'package:tracks/features/capture/domain/rules.dart';
+import 'package:tracks/features/funds/domain/fund_math.dart';
 import 'package:tracks/features/insights/domain/forecast.dart';
 import 'package:tracks/features/recurring/domain/reminder_plan.dart';
 import 'package:tracks/features/recurring/domain/schedule.dart';
@@ -63,10 +64,47 @@ class SelectedMonth extends _$SelectedMonth {
 @riverpod
 Stream<List<Transaction>> monthTransactions(Ref ref) {
   final month = ref.watch(selectedMonthProvider);
+  final separate = ref.watch(separateFundAccountsProvider);
   return ref
       .watch(appDatabaseProvider)
-      .watchTransactionsBetween(month, nextMonthStart(month));
+      .watchTransactionsBetween(month, nextMonthStart(month))
+      .map((rows) => mainOnly(rows, separate));
 }
+
+@riverpod
+Stream<List<Fund>> funds(Ref ref) =>
+    ref.watch(appDatabaseProvider).watchFunds();
+
+/// Accounts of funds kept separate; their money stays out of main views.
+@riverpod
+Set<int> separateFundAccounts(Ref ref) => separateAccountIds(
+  accounts: [
+    for (final a in ref.watch(allAccountsProvider).value ?? const <Account>[])
+      (id: a.id, fundId: a.fundId),
+  ],
+  funds: [
+    for (final f in ref.watch(fundsProvider).value ?? const <Fund>[])
+      (id: f.id, mode: f.mode),
+  ],
+);
+
+FundTxn fundTxnOf(Transaction t) => (
+  type: t.type,
+  accountId: t.accountId,
+  toAccountId: t.toAccountId,
+  fundId: t.fundId,
+  paise: t.amountPaise,
+  categoryId: t.categoryId,
+);
+
+/// [rows] without what belongs only to separate funds.
+List<Transaction> mainOnly(List<Transaction> rows, Set<int> separate) =>
+    separate.isEmpty
+    ? rows
+    : [
+        for (final t in rows)
+          if (countsInMain(fundTxnOf(t), separate)) t,
+      ];
 
 @riverpod
 Stream<List<TxnTotal>> txnTotals(Ref ref) =>
@@ -100,20 +138,23 @@ class ViewMode extends _$ViewMode {
 
 /// All transactions as plain records, for period totals and reports.
 @riverpod
-Stream<List<DatedTxn>> allDatedTxns(Ref ref) => ref
-    .watch(appDatabaseProvider)
-    .watchAllTransactions()
-    .map(
-      (rows) => [
-        for (final t in rows)
-          (
-            type: t.type,
-            amountPaise: t.amountPaise,
-            occurredAt: t.occurredAt,
-            categoryId: t.categoryId,
-          ),
-      ],
-    );
+Stream<List<DatedTxn>> allDatedTxns(Ref ref) {
+  final separate = ref.watch(separateFundAccountsProvider);
+  return ref
+      .watch(appDatabaseProvider)
+      .watchAllTransactions()
+      .map(
+        (rows) => [
+          for (final t in mainOnly(rows, separate))
+            (
+              type: t.type,
+              amountPaise: t.amountPaise,
+              occurredAt: t.occurredAt,
+              categoryId: t.categoryId,
+            ),
+        ],
+      );
+}
 
 /// Category id → parent id, for rolling subcategories up.
 @riverpod
@@ -253,9 +294,12 @@ CashForecast? cashForecast(Ref ref) {
   final recurrings = ref.watch(recurringsProvider).value;
   if (accounts == null || txns == null || recurrings == null) return null;
   final balances = ref.watch(balancesProvider);
+  // A separate fund's money isn't there to spend before payday.
+  final separate = ref.watch(separateFundAccountsProvider);
   final liquid = {
     for (final a in accounts)
-      if (spendableAccountTypes.contains(a.type)) a.id,
+      if (spendableAccountTypes.contains(a.type) && !separate.contains(a.id))
+        a.id,
   };
   if (liquid.isEmpty) return null;
   final today = DateTime.now();

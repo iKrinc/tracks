@@ -340,7 +340,92 @@ final class MonthTransactionsProvider
   }
 }
 
-String _$monthTransactionsHash() => r'2fa5aec86ea57ca6f6f47d975c63ce7609df085d';
+String _$monthTransactionsHash() => r'890e920840fc6f30d11ee3019908578cb712e262';
+
+@ProviderFor(funds)
+final fundsProvider = FundsProvider._();
+
+final class FundsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Fund>>,
+          List<Fund>,
+          Stream<List<Fund>>
+        >
+    with $FutureModifier<List<Fund>>, $StreamProvider<List<Fund>> {
+  FundsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'fundsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$fundsHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<List<Fund>> $createElement($ProviderPointer pointer) =>
+      $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<Fund>> create(Ref ref) {
+    return funds(ref);
+  }
+}
+
+String _$fundsHash() => r'87af48840c0c8d9f5f93cd62b08d2278558d4d07';
+
+/// Accounts of funds kept separate; their money stays out of main views.
+
+@ProviderFor(separateFundAccounts)
+final separateFundAccountsProvider = SeparateFundAccountsProvider._();
+
+/// Accounts of funds kept separate; their money stays out of main views.
+
+final class SeparateFundAccountsProvider
+    extends $FunctionalProvider<Set<int>, Set<int>, Set<int>>
+    with $Provider<Set<int>> {
+  /// Accounts of funds kept separate; their money stays out of main views.
+  SeparateFundAccountsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'separateFundAccountsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$separateFundAccountsHash();
+
+  @$internal
+  @override
+  $ProviderElement<Set<int>> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  Set<int> create(Ref ref) {
+    return separateFundAccounts(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Set<int> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Set<int>>(value),
+    );
+  }
+}
+
+String _$separateFundAccountsHash() =>
+    r'68b270c7b91af8527fad8fa9c159cc8d3cb337bc';
 
 @ProviderFor(txnTotals)
 final txnTotalsProvider = TxnTotalsProvider._();
@@ -589,7 +674,7 @@ final class AllDatedTxnsProvider
   }
 }
 
-String _$allDatedTxnsHash() => r'79a59e3d8f54476678f587a5fc2f96ca1b0b376b';
+String _$allDatedTxnsHash() => r'1134089581e6cbf34d6404026df50a65971d1043';
 
 /// Category id → parent id, for rolling subcategories up.
 
@@ -1043,4 +1128,4 @@ final class CashForecastProvider
   }
 }
 
-String _$cashForecastHash() => r'a12a31ad0e5df0213a737f6a938b7008aa17d5ca';
+String _$cashForecastHash() => r'7ae5e6f9d127dd11ae31d2863ba1a5a8ae79c3d0';

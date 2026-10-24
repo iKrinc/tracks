@@ -264,6 +264,44 @@ class AppDatabase extends _$AppDatabase {
     return q.get();
   }
 
+  Stream<List<Fund>> watchFunds() =>
+      (select(funds)..orderBy([(f) => OrderingTerm.asc(f.createdAt)])).watch();
+
+  Future<int> saveFund(FundsCompanion f) =>
+      into(funds).insertOnConflictUpdate(f);
+
+  /// Creates a fund with one account to hold its money (opening [startPaise]
+  /// counts as money already set aside). Returns the fund id.
+  Future<int> createFund({
+    required String name,
+    required int color,
+    String icon = 'savings',
+    int? budgetPaise,
+    int startPaise = 0,
+  }) => transaction(() async {
+    final id = await into(funds).insert(
+      FundsCompanion.insert(
+        name: name,
+        color: color,
+        icon: Value(icon),
+        budgetPaise: Value(budgetPaise),
+      ),
+    );
+    await into(accounts).insert(
+      AccountsCompanion.insert(
+        name: name,
+        type: AccountType.bank,
+        color: color,
+        icon: icon,
+        openingBalancePaise: Value(startPaise),
+        // So "catering 50000 marriage" spends from the fund.
+        matchHints: Value(name.toLowerCase()),
+        fundId: Value(id),
+      ),
+    );
+    return id;
+  });
+
   Stream<List<Rule>> watchRules() =>
       (select(rules)..orderBy([(r) => OrderingTerm.asc(r.keyword)])).watch();
 
