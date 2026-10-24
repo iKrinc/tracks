@@ -77,6 +77,16 @@ class ShareChannel {
     }
   }
 
+  /// Copies a content:// file (Drive, Gmail, other cloud apps) into the
+  /// app cache and returns its path; null if Android couldn't read it.
+  Future<String?> copyUri(String uri) async {
+    try {
+      return await _channel.invokeMethod<String>('readUri', {'uri': uri});
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Shares that arrive while Tracks is running.
   Stream<SharedPayload> get stream => _shared.stream;
 }

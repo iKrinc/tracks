@@ -31,6 +31,29 @@ class MainActivity : FlutterFragmentActivity() {
                         if (intent == null) result.success(null)
                         else read(intent) { result.success(it) }
                     }
+                    // A file picked from Drive or another cloud app is a
+                    // content:// link, not a path: copy it here first.
+                    "readUri" -> {
+                        val uri = call.argument<String>("uri")
+                        if (uri == null) {
+                            result.error("bad_args", "No uri", null)
+                        } else {
+                            io.execute {
+                                val out = try {
+                                    copy(Uri.parse(uri), null, 0)["path"] as String
+                                } catch (e: Throwable) {
+                                    null
+                                }
+                                main.post {
+                                    if (out == null) {
+                                        result.error("unreadable", "Couldn't open that file", null)
+                                    } else {
+                                        result.success(out)
+                                    }
+                                }
+                            }
+                        }
+                    }
                     else -> result.notImplemented()
                 }
             }

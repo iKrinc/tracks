@@ -9,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:tracks/app/providers.dart';
 import 'package:tracks/features/backup/data/backup_service.dart';
+import 'package:tracks/features/capture/data/share_channel.dart';
 import 'package:tracks/features/backup/domain/csv_transactions.dart';
 import 'package:tracks/features/backup/presentation/csv_mapping_sheet.dart';
 
@@ -38,6 +39,12 @@ Future<void> guardFileJob(
     if (context.mounted) _toast(context, e.message);
   } on FormatException {
     if (context.mounted) _toast(context, "That file couldn't be read.");
+  } catch (e) {
+    // Never fail silently: anything else still tells the user.
+    debugPrint('File job failed: $e');
+    if (context.mounted) {
+      _toast(context, "That didn't work: the file couldn't be opened.");
+    }
   }
 }
 
@@ -88,13 +95,29 @@ Future<void> exportCsv(WidgetRef ref) async {
   );
 }
 
+/// Lets the user pick a file and returns its text; null if they backed out.
+/// Files from Drive or other cloud apps come as content:// links with no
+/// path on the phone, so Android reads those for us.
 Future<String?> pickTextFile(List<String> extensions) async {
   final files = await FilePicker.pickFiles(
     type: FileType.custom,
     allowedExtensions: extensions,
   );
   if (files.isEmpty) return null;
-  return utf8.decode(await files.first.readAsBytes(), allowMalformed: true);
+  final f = files.first;
+  if (f.path != null) {
+    return utf8.decode(await File(f.path!).readAsBytes(), allowMalformed: true);
+  }
+  final copied = ShareChannel.supported
+      ? await ShareChannel.instance.copyUri(f.uri.toString())
+      : null;
+  if (copied == null) {
+    throw const BackupFormatException(
+      "Couldn't open that file. If it's in Drive, check you're online, or "
+      'download it first and pick it from Downloads.',
+    );
+  }
+  return utf8.decode(await File(copied).readAsBytes(), allowMalformed: true);
 }
 
 /// Confirms, then replaces all data with the backup in [text].

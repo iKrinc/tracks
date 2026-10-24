@@ -52,3 +52,6 @@ app.*.map.json
 
 # Release APKs are uploaded to GitHub Releases, not committed.
 /dist/
+
+# Owner's real financial data: never commit.
+/private/
