@@ -239,6 +239,9 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
               const SizedBox(height: 12),
             ],
             SegmentedButton<TxnType>(
+              // The fill marks the choice; a checkmark squeezes "Transfer"
+              // onto two lines at large text sizes.
+              showSelectedIcon: false,
               segments: const [
                 ButtonSegment(value: TxnType.expense, label: Text('Expense')),
                 ButtonSegment(value: TxnType.income, label: Text('Income')),
