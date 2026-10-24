@@ -79,24 +79,37 @@ List<Widget> dayGroupSlivers(
   List<Transaction> txns,
   TxnLookup lookup, {
   bool inFund = false,
-}) => [
-  for (final (day, items) in groupByDay(txns, (t) => t.occurredAt)) ...[
-    SliverToBoxAdapter(
-      child: DayHeader(day: day, items: items),
-    ),
-    SliverList.list(
-      children: [
-        for (final t in items) TxnTile(txn: t, lookup: lookup, inFund: inFund),
-      ],
-    ),
-  ],
-];
+}) {
+  // A list spanning months (a fund, search) needs the month on each day.
+  final months = {for (final t in txns) monthStart(t.occurredAt)};
+  return [
+    for (final (day, items) in groupByDay(txns, (t) => t.occurredAt)) ...[
+      SliverToBoxAdapter(
+        child: DayHeader(day: day, items: items, showMonth: months.length > 1),
+      ),
+      SliverList.list(
+        children: [
+          for (final t in items)
+            TxnTile(txn: t, lookup: lookup, inFund: inFund),
+        ],
+      ),
+    ],
+  ];
+}
 
 class DayHeader extends StatelessWidget {
-  const DayHeader({super.key, required this.day, required this.items});
+  const DayHeader({
+    super.key,
+    required this.day,
+    required this.items,
+    this.showMonth = false,
+  });
 
   final DateTime day;
   final List<Transaction> items;
+
+  /// "28 Wed · Oct 2026" instead of "28 Wed", for lists across months.
+  final bool showMonth;
 
   @override
   Widget build(BuildContext context) {
@@ -108,7 +121,13 @@ class DayHeader extends StatelessWidget {
         children: [
           Text('${day.day}', style: theme.textTheme.titleLarge),
           const SizedBox(width: 8),
-          Text(weekdayShort(day), style: theme.textTheme.labelLarge),
+          Text(
+            showMonth
+                ? '${weekdayShort(day)} · '
+                      '${shortDate(day).replaceFirst('${day.day} ', '')}'
+                : weekdayShort(day),
+            style: theme.textTheme.labelLarge,
+          ),
           const Spacer(),
           if (t.incomePaise > 0)
             SignedAmountText(TxnType.income, t.incomePaise),

@@ -237,6 +237,14 @@ folds them into balances. Archived accounts still count, because archiving
 hides an account; it doesn't erase money.
 
 ### 3.11 Data safety
+- **Deleting asks first** (owner's decision): a transaction swipe, forgetting
+  a rule, deleting a bill and closing a fund all show a warning naming what
+  goes, then offer Undo.
+- **Google Drive:** Backup & restore → *Save backup to Google Drive* opens
+  Android's own Save-to screen (Drive appears there when the Drive app is
+  installed). Android uploads; Tracks makes no network call. Android's
+  automatic Google backup also covers Tracks (owner's decision, 2026-10-22).
+
 - **Migrations** v1 → v5 are each tested against frozen schema snapshots
   (`drift_schemas/`), including checks that data survives every step.
 - **JSON backup** holds every table. Restore is atomic, so a bad file changes
@@ -274,31 +282,34 @@ hides an account; it doesn't erase money.
    spending cause it. The sheet lists every step with the running balance.
 
 ### 3.13 Funds: a separate track for one purpose (a wedding, a trip)
-`funds/domain/fund_math.dart`, `funds_screen.dart`, `fund_screen.dart`,
-schema v6. Owner's model: **the fund itself is the category**; a fund is
-just money in and money out.
-- **Model:** a fund owns an account that holds its money (created with it,
-  named after it, so "catering 50000 marriage" goes to it) and an optional
-  budget. Money in and out of that account has no category: the Confirm
-  Card shows "Counts for Marriage, its own category" instead of category
-  chips.
-- **Fund screen:** left in the fund, money in (what was set aside at the
-  start, money moved in, and income such as gifts), money out against the
-  budget, and the fund's own list. Buttons: Money out, Move from my
-  accounts, Money in.
-- **Not synced (the default, and what most people will use):** tracked only
-  on its own screen. Nothing shows in Home, Reports, budgets or net worth
-  (`countsInMain`). Moving money in from a main account still shows in main
-  as a transfer, so main balances stay true. Accounts shows "+ ₹1,50,000
-  kept in funds" beside net worth.
-- **Synced:** one switch, on and off at will. Each money in/out then shows
-  in the main flow as **"Marriage – catering"**, and Reports show the fund
-  as one category slice (tapping it opens the fund; ids are `-fundId`).
-- **The payday forecast never uses funds:** their money isn't spendable
-  and their spends don't count as everyday spending.
-- **Close:** move what's left to a cash, bank or wallet account; the fund
-  and its account are archived with their history. Undo or Reopen bring
-  it back. Backups carry funds; older backups still restore.
+`funds/`, schema v6 + v7. Owner's model: **the fund itself is the category**;
+a fund is just money in and money out. Funds has its own bottom-bar tab.
+- **Create:** name, optional budget, starting money that is either **new
+  money** (typed in, never in your accounts here) or **taken from an
+  account** (a real "Wedding – initial" transfer, so that account's balance
+  stays true). A fund gets an account named after it, so "catering 50000
+  wedding" on Home goes straight to it. Its entries have no category.
+- **Not synced (default, what most people use):** tracked only on its own
+  screen. Nothing shows in Home, Reports, budgets or net worth. Accounts
+  shows "+ ₹70,000 kept in funds" beside net worth.
+- **Sync (on and off at will):** you pick a main account, say HDFC.
+  Example: Wedding starts with ₹5,00,000; catering ₹50,000 on 28 Sep;
+  others ₹4,00,000 on 28 Oct; gifts ₹20,000 on 29 Oct. Synced, the main
+  timeline shows *Wedding – catering* (28 Sep), *Wedding – others* (28 Oct),
+  *Wedding – gifts* (29 Oct) on their own dates, then **Wedding – remaining
+  ₹70,000, Wedding → HDFC**, timed right after the last entry. It is a real
+  transfer, so HDFC's balance and net worth are right.
+  - `remaining` is kept by the app (`AppDatabase._refreshSync`): every add
+    or delete touching the fund updates its amount and date. An overspent
+    fund's shortfall is covered *from* HDFC. It can't be swiped away: turn
+    sync off.
+  - **Unsync** deletes only `remaining`; every real entry stays.
+  - Reports show a synced fund as one category slice (tap opens the fund).
+- **The payday forecast never uses funds.**
+- **Close:** move what's left to a cash, bank or wallet account (synced
+  funds are unsynced first); the fund and its account are archived with
+  their history. It asks first; Undo or Reopen bring it back.
+- Tested end to end on the owner's example (`test/data/fund_sync_test.dart`).
 
 ### 3.14 Crash safety
 - Every capture function runs inside `_safely`: if a parser throws on a

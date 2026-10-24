@@ -137,7 +137,7 @@ class _FundCard extends StatelessWidget {
         ? 'Closed'
         : f.mode == FundMode.separate
         ? 'Kept separate'
-        : 'Counts in main';
+        : 'Synced';
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Material(

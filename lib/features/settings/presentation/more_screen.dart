@@ -74,7 +74,9 @@ class MoreScreen extends ConsumerWidget {
           ListTile(
             leading: const Icon(Icons.save_alt),
             title: const Text('Backup & restore'),
-            subtitle: const Text('Move to a new phone, export CSV, import'),
+            subtitle: const Text(
+              'Google Drive, new phone, CSV export & import',
+            ),
             onTap: () => context.push('/backup'),
           ),
           Padding(
