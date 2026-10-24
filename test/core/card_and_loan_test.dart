@@ -120,10 +120,87 @@ void main() {
       expect(p.monthsLeft, 33);
     });
 
+    test('a fresh loan paid by its exact EMI has its full tenure left', () {
+      // Floating-point drift made 24.0000001 ceil to 25.
+      final emi = emiPaise(principalPaise: 12000000, rateBp: 1050, months: 24);
+      final p = loanProgress(
+        principalPaise: 12000000,
+        outstandingPaise: 12000000,
+        emiPaise: emi,
+        rateBp: 1050,
+      );
+      expect(p.monthsLeft, 24);
+    });
+
     test('IOUs without EMI still show progress', () {
       final p = loanProgress(principalPaise: 200000, outstandingPaise: 50000);
       expect(p.percentPaid, 75);
       expect(p.monthsLeft, isNull);
+    });
+  });
+
+  group('splitEmi', () {
+    test(
+      'a month of interest on what is still owed, the rest is principal',
+      () {
+        // ₹5,00,000 at 9.5%: interest ₹3,958.33, EMI ₹10,500.90.
+        final s = splitEmi(
+          paymentPaise: 1050090,
+          outstandingPaise: 50000000,
+          rateBp: 950,
+        );
+        expect(s.interestPaise, 395833);
+        expect(s.principalPaise, 1050090 - 395833);
+      },
+    );
+
+    test('interest falls as the loan is repaid', () {
+      final early = splitEmi(
+        paymentPaise: 1050090,
+        outstandingPaise: 50000000,
+        rateBp: 950,
+      );
+      final late = splitEmi(
+        paymentPaise: 1050090,
+        outstandingPaise: 5000000,
+        rateBp: 950,
+      );
+      expect(late.interestPaise, lessThan(early.interestPaise));
+      expect(late.principalPaise, greaterThan(early.principalPaise));
+    });
+
+    test('no rate (or nothing owed) means it is all principal', () {
+      expect(splitEmi(paymentPaise: 500000, outstandingPaise: 9000000), (
+        principalPaise: 500000,
+        interestPaise: 0,
+      ));
+      expect(
+        splitEmi(paymentPaise: 500000, outstandingPaise: 0, rateBp: 1200),
+        (principalPaise: 500000, interestPaise: 0),
+      );
+    });
+
+    test('a payment below the interest is all interest', () {
+      final s = splitEmi(
+        paymentPaise: 100000,
+        outstandingPaise: 50000000,
+        rateBp: 1200,
+      );
+      expect(s, (principalPaise: 0, interestPaise: 100000));
+    });
+
+    test('parts always add up to the payment', () {
+      for (final owed in [1, 999, 123456789, 50000000000]) {
+        for (final bp in [1, 799, 950, 3600]) {
+          final s = splitEmi(
+            paymentPaise: 777777,
+            outstandingPaise: owed,
+            rateBp: bp,
+          );
+          expect(s.principalPaise + s.interestPaise, 777777);
+          expect(s.principalPaise, greaterThanOrEqualTo(0));
+        }
+      }
     });
   });
 }

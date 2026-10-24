@@ -7,6 +7,7 @@ import 'package:tracks/core/dates.dart';
 import 'package:tracks/core/money.dart';
 import 'package:tracks/data/app_database.dart';
 import 'package:tracks/data/default_data.dart';
+import 'package:tracks/features/accounts/domain/loan.dart';
 import 'package:tracks/features/capture/domain/account_match.dart';
 import 'package:tracks/features/capture/domain/capture_draft.dart';
 import 'package:tracks/features/capture/domain/category_guess.dart';
@@ -59,6 +60,10 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
   int? _suggestedCategoryId;
   bool _suggestionsTaken = false;
   bool _remember = true;
+
+  /// Paying into a loan with a rate: book this month's interest as an
+  /// expense and only the rest against the loan.
+  bool _splitInterest = true;
   String? _error;
 
   CaptureDraft? get _d => widget.draft;
@@ -161,6 +166,8 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
     final categories =
         ref.watch(categoriesProvider(kind)).value ?? const <Category>[];
 
+    // Kept live for the EMI interest split, which needs what's still owed.
+    ref.watch(balancesProvider);
     final rules = ref.watch(rulesProvider);
     if (!_ruleLooked && rules.hasValue) {
       _ruleLooked = true;
@@ -299,6 +306,14 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
                         type: AccountType.creditCard,
                       ),
               ),
+              if (_loanPaid(accounts) case final loan?)
+                _InterestSplit(
+                  loan: loan,
+                  paymentPaise: parseRupeesToPaise(_amount.text) ?? 0,
+                  split: _split(loan, parseRupeesToPaise(_amount.text) ?? 0),
+                  on: _splitInterest,
+                  onChanged: (v) => setState(() => _splitInterest = v),
+                ),
             ] else ...[
               const _Label('Category'),
               _CategoryChips(
@@ -383,6 +398,25 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
     );
   }
 
+  /// The loan being paid, when it has a rate to split interest by.
+  Account? _loanPaid(List<Account> accounts) {
+    if (_type != TxnType.transfer || _asIou) return null;
+    final to = accounts.where((a) => a.id == _toAccountId).firstOrNull;
+    if (to == null || to.type != AccountType.loan) return null;
+    return (to.interestRateBp ?? 0) > 0 ? to : null;
+  }
+
+  /// Principal and interest of [paise] paid into [loan].
+  EmiSplit _split(Account loan, int paise) {
+    final balance = ref.read(balancesProvider)[loan.id] ?? 0;
+    return splitEmi(
+      paymentPaise: paise,
+      // A loan's balance is negative: what's still owed.
+      outstandingPaise: -balance,
+      rateBp: loan.interestRateBp,
+    );
+  }
+
   /// The keyword to offer "Always for …" under, when the user corrected
   /// the suggested category or account of a capture.
   String? _learnKey() {
@@ -449,31 +483,65 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
         from = personId;
       }
     }
-    await db.addTransaction(
-      TransactionsCompanion.insert(
-        type: type,
-        amountPaise: paise,
-        accountId: from,
-        toAccountId: Value(to),
-        categoryId: Value(type == TxnType.transfer ? null : _categoryId),
-        note: Value(_note.text.trim()),
-        merchant: Value(d?.merchant),
-        tags: Value(d?.tags ?? ''),
-        // The SMS/receipt's own time when it has one, else now.
-        occurredAt: DateTime(
-          _date.year,
-          _date.month,
-          _date.day,
-          d?.time?.hour ?? now.hour,
-          d?.time?.minute ?? now.minute,
-          d?.time == null ? now.second : 0,
-        ),
-        source: Value(d?.source ?? TxnSource.manual),
-        rawSourceText: Value(d?.rawText),
-        refNo: Value(d?.refNo),
-        linkedRecurringId: Value(d?.linkedRecurringId),
-      ),
+    final occurredAt = DateTime(
+      _date.year,
+      _date.month,
+      _date.day,
+      d?.time?.hour ?? now.hour,
+      d?.time?.minute ?? now.minute,
+      d?.time == null ? now.second : 0,
     );
+    // An EMI: the interest part is spending, only the principal lowers
+    // the loan.
+    final accounts = ref.read(accountsProvider).value ?? const <Account>[];
+    final loan = _splitInterest ? _loanPaid(accounts) : null;
+    final split = loan == null ? null : _split(loan, paise);
+    final expense = split == null || split.interestPaise == 0
+        ? const <Category>[]
+        : await ref.read(categoriesProvider(CategoryKind.expense).future);
+    // Interest and principal are saved together or not at all. A payment
+    // smaller than the month's interest is all interest: no transfer.
+    final transferPaise = split?.principalPaise ?? paise;
+    await db.transaction(() async {
+      if (loan != null && split != null && split.interestPaise > 0) {
+        await db.addTransaction(
+          TransactionsCompanion.insert(
+            type: TxnType.expense,
+            amountPaise: split.interestPaise,
+            accountId: from,
+            categoryId: Value(
+              expense.where((c) => c.name == 'EMI & Loans').firstOrNull?.id,
+            ),
+            note: Value('Interest · ${loan.name}'),
+            tags: Value(
+              [d?.tags ?? '', 'interest'].where((t) => t.isNotEmpty).join(','),
+            ),
+            occurredAt: occurredAt,
+            source: Value(d?.source ?? TxnSource.manual),
+            rawSourceText: Value(d?.rawText),
+          ),
+        );
+      }
+      if (transferPaise <= 0) return;
+      await db.addTransaction(
+        TransactionsCompanion.insert(
+          type: type,
+          amountPaise: transferPaise,
+          accountId: from,
+          toAccountId: Value(to),
+          categoryId: Value(type == TxnType.transfer ? null : _categoryId),
+          note: Value(_note.text.trim()),
+          merchant: Value(d?.merchant),
+          tags: Value(d?.tags ?? ''),
+          // The SMS/receipt's own time when it has one, else now.
+          occurredAt: occurredAt,
+          source: Value(d?.source ?? TxnSource.manual),
+          rawSourceText: Value(d?.rawText),
+          refNo: Value(d?.refNo),
+          linkedRecurringId: Value(d?.linkedRecurringId),
+        ),
+      );
+    });
     final learnKey = _learnKey();
     if (learnKey != null && _remember) {
       await db.learnRule(
@@ -489,6 +557,74 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
       await ref.read(appDatabaseProvider).markRecurringPaid(recurringId, _date);
     }
     if (mounted) Navigator.of(context).pop(true);
+  }
+}
+
+/// "₹6,542 lowers the loan · ₹3,958 interest at 9.5%", with a toggle for
+/// prepayments the user wants booked entirely against the loan.
+class _InterestSplit extends StatelessWidget {
+  const _InterestSplit({
+    required this.loan,
+    required this.paymentPaise,
+    required this.split,
+    required this.on,
+    required this.onChanged,
+  });
+
+  final Account loan;
+  final int paymentPaise;
+  final EmiSplit split;
+  final bool on;
+  final ValueChanged<bool> onChanged;
+
+  /// 950 bp → "9.5", 900 → "9", 1075 → "10.75"; no doubles.
+  static String _percent(int bp) {
+    final whole = bp ~/ 100;
+    final frac = (bp % 100)
+        .toString()
+        .padLeft(2, '0')
+        .replaceFirst(RegExp(r'0+$'), '');
+    return frac.isEmpty ? '$whole' : '$whole.$frac';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final rate = _percent(loan.interestRateBp!);
+    final String text;
+    final String spoken;
+    if (paymentPaise <= 0) {
+      text = 'Enter the amount to see the interest at $rate%';
+      spoken = text.replaceFirst('%', ' percent');
+    } else if (on) {
+      text =
+          '${formatPaise(split.principalPaise)} lowers the loan\n'
+          '${formatPaise(split.interestPaise)} interest at $rate%';
+      spoken =
+          '${spokenPaise(split.principalPaise)} lowers the loan, '
+          '${spokenPaise(split.interestPaise)} interest at $rate percent';
+    } else {
+      text = 'All ${formatPaise(paymentPaise)} lowers the loan (a prepayment)';
+      spoken = 'All ${spokenPaise(paymentPaise)} lowers the loan';
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        isThreeLine: true,
+        value: on,
+        onChanged: onChanged,
+        title: const Text('Split out interest'),
+        subtitle: Semantics(
+          label: spoken,
+          excludeSemantics: true,
+          child: Text(
+            text,
+            style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+          ),
+        ),
+      ),
+    );
   }
 }
 
