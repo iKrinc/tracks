@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tracks · money tracker for Android</title>
+<meta name="description" content="Track every rupee by typing one line or sharing a bank SMS. Everything stays on your phone.">
+<meta name="theme-color" content="#F7C35F">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #FBF6EC;
+    --card: #F5EEE1;
+    --ink: #221C15;
+    --muted: #5A4E40;
+    --line: #D9CDB8;
+    --marigold: #F7C35F;
+    --coral: #F29E7A;
+    --jade: #1B6B4F;
+    --button-ink: #FBF6EC;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #16120E;
+      --card: #1E1914;
+      --ink: #F5EFE6;
+      --muted: #CBBFAF;
+      --line: #4A4036;
+      --jade: #8FD3B0;
+      --button-ink: #2B1E05;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font: 400 1.0625rem/1.55 "Bricolage Grotesque", system-ui, sans-serif;
+    font-optical-sizing: auto;
+  }
+  main { max-width: 40rem; margin: 0 auto; padding: 3.5rem 1.25rem 4rem; }
+  h1 {
+    font-size: clamp(2.6rem, 9vw, 4.4rem);
+    font-weight: 800;
+    line-height: 0.98;
+    letter-spacing: -0.045em;
+    margin: 0 0 1.25rem;
+  }
+  h2 {
+    font-size: 1.35rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin: 3rem 0 0.75rem;
+  }
+  p { margin: 0 0 1rem; max-width: 34rem; }
+  .lede { font-size: 1.2rem; color: var(--muted); }
+  a { color: inherit; text-underline-offset: 0.18em; }
+  :focus-visible { outline: 3px solid var(--coral); outline-offset: 3px; border-radius: 6px; }
+
+  /* The demo: one line typed, then the card the app shows. */
+  .demo {
+    margin: 2.25rem 0 2rem;
+    padding: 1.1rem;
+    border-radius: 28px;
+    background: linear-gradient(135deg, var(--marigold), var(--coral));
+    color: #221C15;
+  }
+  .bar {
+    display: flex; align-items: center; gap: 0.6rem;
+    background: rgba(251, 246, 236, 0.92);
+    border-radius: 22px;
+    padding: 0.8rem 1rem;
+    font-size: 1.15rem;
+  }
+  .bar svg { flex: none; }
+  .typed { min-height: 1.5em; }
+  .caret {
+    display: inline-block; width: 2px; height: 1.15em;
+    background: #221C15; vertical-align: -0.2em; margin-left: 1px;
+    animation: blink 1s steps(1) infinite;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+  .confirm {
+    margin-top: 0.8rem;
+    background: rgba(251, 246, 236, 0.92);
+    border-radius: 22px;
+    padding: 1rem 1.1rem;
+    display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0.25rem 1rem;
+    opacity: 0; transform: translateY(6px);
+    transition: opacity 0.35s ease, transform 0.35s ease;
+  }
+  .confirm.shown { opacity: 1; transform: none; }
+  .amount {
+    font-size: 2rem; font-weight: 800; letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+  .what { color: #4A3F33; font-size: 0.98rem; }
+  .saved {
+    grid-row: span 2;
+    background: #221C15; color: #FBF6EC;
+    border-radius: 999px; padding: 0.55rem 1.1rem; font-weight: 600; font-size: 0.95rem;
+  }
+
+  .download {
+    display: inline-flex; align-items: center; gap: 0.7rem;
+    background: var(--ink); color: var(--button-ink);
+    text-decoration: none; font-weight: 600; font-size: 1.15rem;
+    padding: 1rem 1.6rem; border-radius: 999px;
+    min-height: 56px;
+  }
+  .download:hover { filter: brightness(1.12); }
+  .facts { color: var(--muted); font-size: 0.95rem; margin-top: 0.9rem; }
+  .facts a { color: var(--muted); }
+
+  ol.steps { list-style: none; padding: 0; margin: 0; counter-reset: s; }
+  ol.steps li {
+    counter-increment: s;
+    display: grid; grid-template-columns: 2.25rem 1fr; gap: 0.75rem;
+    padding: 0.9rem 0; border-top: 1px solid var(--line);
+  }
+  ol.steps li:last-child { border-bottom: 1px solid var(--line); }
+  ol.steps li::before {
+    content: counter(s);
+    width: 2.25rem; height: 2.25rem; border-radius: 50%;
+    display: grid; place-items: center;
+    background: var(--card); font-weight: 800;
+  }
+  ol.steps strong { display: block; font-weight: 600; }
+  ol.steps span { color: var(--muted); }
+
+  .verify {
+    background: var(--card); border-radius: 16px; padding: 1rem 1.1rem;
+    font-size: 0.95rem; color: var(--muted); overflow-wrap: anywhere;
+  }
+  .verify code { color: var(--ink); font-size: 0.85rem; }
+  footer { margin-top: 3rem; color: var(--muted); font-size: 0.9rem; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .caret { animation: none; }
+    .confirm { transition: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Every rupee, in three seconds.</h1>
+  <p class="lede">Type one line like “chai 20 gpay”, or share a bank SMS or a GPay screenshot. Tracks fills in the rest. Everything stays on your phone.</p>
+
+  <div class="demo" aria-label="Example: typing chai 20 gpay saves a 20 rupee Snacks and Chai expense from GPay">
+    <div class="bar" aria-hidden="true">
+      <svg width="20" height="20" viewBox="0 0 24 24"><path fill="#221C15" d="M11 21h-1l1-7H7.5c-.88 0-.33-.75-.31-.78C8.48 10.94 10.42 7.54 13.01 3h1l-1 7h3.51c.4 0 .62.19.4.66C12.97 17.55 11 21 11 21z"/></svg>
+      <span class="typed" id="typed"></span><span class="caret"></span>
+    </div>
+    <div class="confirm" id="confirm" aria-hidden="true">
+      <div class="amount">₹20.00</div>
+      <div class="saved">Save</div>
+      <div class="what">Snacks &amp; Chai, from GPay, today</div>
+    </div>
+  </div>
+
+  <a class="download" id="download" href="https://github.com/iKrinc/tracks/releases/latest/download/tracks.apk" download>
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M5 20h14v-2H5v2zm14-11h-4V3H9v6H5l7 7 7-7z"/></svg>
+    Download Tracks for Android
+  </a>
+  <p class="facts">Version <span id="version">0.2.0</span>, about 35 MB, Android 7 or newer. Older 32-bit phone? <a href="https://github.com/iKrinc/tracks/releases/latest/download/tracks-universal.apk">Get the build that runs on every phone</a> (94 MB).</p>
+
+  <h2>Install it</h2>
+  <ol class="steps">
+    <li><div><strong>Open the downloaded file</strong><span>From the browser's downloads, tap tracks.apk.</span></div></li>
+    <li><div><strong>Allow this one install</strong><span>Android asks once to allow installs from your browser. Tracks isn't on the Play Store yet, so this is how it gets on your phone.</span></div></li>
+    <li><div><strong>Tap Install, then Open</strong><span>Updates install the same way and keep your data.</span></div></li>
+  </ol>
+
+  <h2>Private by design</h2>
+  <p>No account, no ads, no analytics. The app never goes online: your transactions live only on your phone. Back up to Google Drive from inside the app when you want to, or let Android's own backup carry Tracks to a new phone.</p>
+
+  <h2>Check the download</h2>
+  <div class="verify">
+    Every Tracks build is signed with the same key. Its SHA-256 certificate digest is
+    <code>ca7143b8e365a457ffda4183684814c4601a39908ac028497c0b83540fee7cba</code>.
+    Android refuses an update signed by anyone else.
+  </div>
+
+  <footer>
+    Made by KRINC. <a href="https://github.com/iKrinc/tracks">Source code</a> · <a href="https://github.com/iKrinc/tracks/releases">All releases</a>
+  </footer>
+</main>
+<script>
+  (function () {
+    var text = 'chai 20 gpay';
+    var typed = document.getElementById('typed');
+    var card = document.getElementById('confirm');
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      typed.textContent = text;
+      card.classList.add('shown');
+      return;
+    }
+    var i = 0;
+    function step() {
+      typed.textContent = text.slice(0, ++i);
+      if (i < text.length) {
+        setTimeout(step, 90 + Math.random() * 70);
+      } else {
+        setTimeout(function () { card.classList.add('shown'); }, 350);
+      }
+    }
+    setTimeout(step, 600);
+  })();
+</script>
+</body>
+</html>

@@ -49,3 +49,6 @@ app.*.map.json
 
 # Local Claude preview config
 .claude/launch.json
+
+# Release APKs are uploaded to GitHub Releases, not committed.
+/dist/
