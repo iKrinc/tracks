@@ -61,6 +61,11 @@ class MainActivity : FlutterFragmentActivity() {
      */
     private fun read(intent: Intent, done: (Map<String, Any?>?) -> Unit) {
         val action = intent.action
+        // From the home-screen widget: no files to read.
+        if (action == QuickAddWidget.ACTION_QUICK_ADD || action == QuickAddWidget.ACTION_FORM) {
+            done(mapOf("open" to if (action == QuickAddWidget.ACTION_FORM) "form" else "quickAdd"))
+            return
+        }
         // Reopened from Recents: the share was already handled.
         val fromHistory = intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0
         if (fromHistory || (action != Intent.ACTION_SEND && action != Intent.ACTION_SEND_MULTIPLE)) {

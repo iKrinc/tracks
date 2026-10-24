@@ -124,6 +124,21 @@ input (shared SMS text | shared image | quick-add text | pasted text)
 - Optional encrypted backup to a user-chosen location (Drive/own server) — user-triggered only
 - Optional on-device LLM for messy inputs
 
+### Release plan (owner's decisions, 2026-10-24)
+- **No Play Store release for now.** Builds are distributed as a signed APK on GitHub
+  Releases, with a small download page on Vercel whose button downloads the latest APK.
+- **Next release:**
+  1. Opt-in capture from payment notifications (GPay, PhonePe, bank apps), with clear
+     disclosure; still never READ_SMS / RECEIVE_SMS.
+  2. More real bank formats (SBI, HDFC, ICICI, Axis, PhonePe/Paytm), anonymised.
+  3. Savings goals (target, date, progress, monthly amount), reusing the Funds design.
+  5. Privacy: optional backup passphrase; hide Tracks in recent apps (`FLAG_SECURE`)
+     when App lock is on.
+- **Maybe, some day:** Money Manager Excel import and XLSX export. The owner doesn't use
+  Money Manager, so don't build this unless asked.
+- **Done in this round:** theme editor, app icon, home-screen quick-add widget, faster
+  reports (SQL aggregates and indexes).
+
 ### Status (2026-10-24), see `docs/how-tracks-works.md`
 - **Phase 1 done:** quick-add, SMS and screenshot (on-device OCR) share, accounts,
   categories editor, Daily/Monthly/Yearly + calendar, search, backup/restore/CSV, app lock.

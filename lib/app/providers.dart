@@ -1,4 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:tracks/app/appearance.dart';
 import 'package:tracks/core/dates.dart';
 import 'package:tracks/data/app_database.dart';
 import 'package:tracks/features/accounts/domain/balances.dart';
@@ -130,6 +131,18 @@ Map<int, int> balances(Ref ref) {
 @riverpod
 Stream<String?> setting(Ref ref, String key) =>
     ref.watch(appDatabaseProvider).watchSetting(key);
+
+/// Theme choices from More → Appearance; defaults until settings load.
+@riverpod
+Appearance appearance(Ref ref) => Appearance.fromSettings({
+  for (final k in [
+    Appearance.modeKey,
+    Appearance.accentKey,
+    Appearance.textKey,
+    Appearance.compactKey,
+  ])
+    k: ?ref.watch(settingProvider(k)).value,
+});
 
 /// How the Transactions tab groups things.
 enum PeriodView { daily, monthly, yearly }
@@ -402,4 +415,17 @@ CashForecast? cashForecast(Ref ref) {
       liquidAccounts: liquid,
     ),
   );
+}
+
+/// What the home-screen widget asked for. Each tap is a new request (the
+/// counter changes), so Home reacts even to the same kind twice.
+typedef QuickAddRequest = ({int n, bool form});
+
+@Riverpod(keepAlive: true)
+class QuickAddRequests extends _$QuickAddRequests {
+  @override
+  QuickAddRequest? build() => null;
+
+  void ask({required bool form}) =>
+      state = (n: (state?.n ?? 0) + 1, form: form);
 }
