@@ -45,6 +45,12 @@
                 <category android:name="android.intent.category.DEFAULT"/>
                 <data android:mimeType="image/*"/>
             </intent-filter>
+            <!-- Several screenshots at once. -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND_MULTIPLE"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:mimeType="image/*"/>
+            </intent-filter>
             <!-- Open a Tracks backup or a CSV from Drive / Gmail / Files. -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND"/>

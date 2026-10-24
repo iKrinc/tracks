@@ -14,18 +14,24 @@ import 'package:tracks/features/capture/presentation/confirm_sheet.dart';
 
 /// Review several captured transactions (e.g. a screenshot of an SMS
 /// thread) and save the ticked ones in one go. Resolves to true if any
-/// were saved.
-Future<bool?> showBatchReview(
+/// were saved, including ones saved one by one through the Confirm Card.
+Future<bool> showBatchReview(
   BuildContext context,
   List<CaptureDraft> drafts,
-) => showModalBottomSheet<bool>(
-  context: context,
-  isScrollControlled: true,
-  useRootNavigator: true,
-  showDragHandle: true,
-  useSafeArea: true,
-  builder: (_) => _BatchReview(drafts: drafts),
-);
+) async {
+  final anySaved = ValueNotifier(false);
+  await showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useRootNavigator: true,
+    showDragHandle: true,
+    useSafeArea: true,
+    builder: (_) => _BatchReview(drafts: drafts, anySaved: anySaved),
+  );
+  final saved = anySaved.value;
+  anySaved.dispose();
+  return saved;
+}
 
 class _Row {
   _Row(this.draft);
@@ -35,10 +41,20 @@ class _Row {
   bool saved = false;
 }
 
+/// What saving a draft would store: shown in its row and used by save, so
+/// the preview never disagrees with the result.
+typedef _Resolved = ({
+  int? account,
+  int? toAccount,
+  TxnType type,
+  int? category,
+});
+
 class _BatchReview extends ConsumerStatefulWidget {
-  const _BatchReview({required this.drafts});
+  const _BatchReview({required this.drafts, required this.anySaved});
 
   final List<CaptureDraft> drafts;
+  final ValueNotifier<bool> anySaved;
 
   @override
   ConsumerState<_BatchReview> createState() => _BatchReviewState();
@@ -73,9 +89,12 @@ class _BatchReviewState extends ConsumerState<_BatchReview> {
     }
   }
 
+  Iterable<MatchableAccount> _matchable(List<Account> accounts) =>
+      accounts.map((a) => (id: a.id, name: a.name, matchHints: a.matchHints));
+
   int? _accountFor(CaptureDraft d, List<Account> accounts) =>
       matchAccount(
-        accounts.map((a) => (id: a.id, name: a.name, matchHints: a.matchHints)),
+        _matchable(accounts),
         hint: d.accountHint,
         last4: d.accountLast4,
         bank: d.bankHint,
@@ -90,6 +109,43 @@ class _BatchReviewState extends ConsumerState<_BatchReview> {
     return categories.where((c) => c.name == name).firstOrNull?.id;
   }
 
+  /// A transfer (ATM, card bill) needs both ends; without a match for the
+  /// other one it is saved as an expense.
+  _Resolved _resolve(
+    CaptureDraft d,
+    List<Account> accounts,
+    Map<CategoryKind, List<Category>> categories,
+  ) {
+    final account = _accountFor(d, accounts);
+    final to = d.type == TxnType.transfer
+        ? matchAccount(
+            _matchable(accounts),
+            hint: d.toAccountHint,
+            last4: d.toAccountLast4,
+          )
+        : null;
+    final transfer = to != null && to != account;
+    final type = transfer
+        ? TxnType.transfer
+        : (d.type == TxnType.transfer ? TxnType.expense : d.type);
+    final kind = type == TxnType.income
+        ? CategoryKind.income
+        : CategoryKind.expense;
+    return (
+      account: account,
+      toAccount: transfer ? to : null,
+      type: type,
+      category: transfer ? null : _categoryFor(d, categories[kind] ?? const []),
+    );
+  }
+
+  /// Rows that can be saved straight from this list; the rest need the
+  /// Confirm Card (no amount, or no account to put them in).
+  bool _savable(_Row r, List<Account> accounts) =>
+      !r.saved &&
+      (r.draft.amountPaise ?? 0) > 0 &&
+      _accountFor(r.draft, accounts) != null;
+
   Future<void> _saveSelected(
     List<Account> accounts,
     Map<CategoryKind, List<Category>> categories,
@@ -98,37 +154,17 @@ class _BatchReviewState extends ConsumerState<_BatchReview> {
     final db = ref.read(appDatabaseProvider);
     final now = DateTime.now();
     var saved = 0;
-    for (final r in _rows.where((r) => r.selected && !r.saved)) {
+    for (final r in _rows.where((r) => r.selected && _savable(r, accounts))) {
       final d = r.draft;
-      final account = _accountFor(d, accounts);
-      if (account == null || d.amountPaise == null) continue;
-      final kind = d.type == TxnType.income
-          ? CategoryKind.income
-          : CategoryKind.expense;
+      final x = _resolve(d, accounts, categories);
       final date = d.date ?? dateOnly(now);
-      // A transfer (ATM, card bill) needs both ends; without a match for
-      // the other one it is saved as a plain expense.
-      final to = d.type == TxnType.transfer
-          ? matchAccount(
-              accounts.map(
-                (a) => (id: a.id, name: a.name, matchHints: a.matchHints),
-              ),
-              hint: d.toAccountHint,
-              last4: d.toAccountLast4,
-            )
-          : null;
-      final transfer = to != null && to != account;
       await db.addTransaction(
         TransactionsCompanion.insert(
-          type: transfer
-              ? TxnType.transfer
-              : (d.type == TxnType.transfer ? TxnType.expense : d.type),
+          type: x.type,
           amountPaise: d.amountPaise!,
-          accountId: account,
-          toAccountId: Value(transfer ? to : null),
-          categoryId: Value(
-            transfer ? null : _categoryFor(d, categories[kind] ?? const []),
-          ),
+          accountId: x.account!,
+          toAccountId: Value(x.toAccount),
+          categoryId: Value(x.category),
           note: Value(d.note),
           merchant: Value(d.merchant),
           tags: Value(d.tags),
@@ -149,12 +185,14 @@ class _BatchReviewState extends ConsumerState<_BatchReview> {
     }
     if (!mounted) return;
     setState(() => _busy = false);
+    if (saved == 0) return;
+    widget.anySaved.value = true;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Saved $saved transaction${saved == 1 ? '' : 's'}'),
       ),
     );
-    Navigator.pop(context, saved > 0);
+    Navigator.pop(context);
   }
 
   @override
@@ -170,10 +208,13 @@ class _BatchReviewState extends ConsumerState<_BatchReview> {
       for (final list in categories.values)
         for (final c in list) c.id: c,
     };
-    final count = _rows.where((r) => r.selected && !r.saved).length;
+    final count = _rows
+        .where((r) => r.selected && _savable(r, accounts))
+        .length;
+    final n = _rows.length;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -181,7 +222,7 @@ class _BatchReviewState extends ConsumerState<_BatchReview> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 4),
             child: Text(
-              'Found ${_rows.length} transactions',
+              'Found $n transaction${n == 1 ? '' : 's'}',
               style: theme.textTheme.headlineSmall,
             ),
           ),
@@ -197,34 +238,37 @@ class _BatchReviewState extends ConsumerState<_BatchReview> {
               shrinkWrap: true,
               children: [
                 for (final r in _rows)
-                  _ReviewTile(
-                    row: r,
-                    account: byId[_accountFor(r.draft, accounts)],
-                    category:
-                        catById[_categoryFor(
-                          r.draft,
-                          categories[r.draft.type == TxnType.income
-                                  ? CategoryKind.income
-                                  : CategoryKind.expense] ??
-                              const [],
-                        )],
-                    onToggle: r.saved
-                        ? null
-                        : (v) => setState(() => r.selected = v),
-                    onOpen: r.saved
-                        ? null
-                        : () async {
-                            final ok = await showConfirmSheet(
-                              context,
-                              draft: r.draft,
-                            );
-                            if (ok == true && mounted) {
-                              setState(() {
-                                r.saved = true;
-                                r.selected = false;
-                              });
-                            }
-                          },
+                  Builder(
+                    builder: (context) {
+                      final x = _resolve(r.draft, accounts, categories);
+                      final savable = _savable(r, accounts);
+                      return _ReviewTile(
+                        row: r,
+                        type: x.type,
+                        account: byId[x.account],
+                        toAccount: byId[x.toAccount],
+                        category: catById[x.category],
+                        needsFixing: !r.saved && !savable,
+                        onToggle: savable
+                            ? (v) => setState(() => r.selected = v)
+                            : null,
+                        onOpen: r.saved
+                            ? null
+                            : () async {
+                                final ok = await showConfirmSheet(
+                                  context,
+                                  draft: r.draft,
+                                );
+                                if (ok == true && mounted) {
+                                  widget.anySaved.value = true;
+                                  setState(() {
+                                    r.saved = true;
+                                    r.selected = false;
+                                  });
+                                }
+                              },
+                      );
+                    },
                   ),
               ],
             ),
@@ -249,24 +293,35 @@ class _BatchReviewState extends ConsumerState<_BatchReview> {
 class _ReviewTile extends StatelessWidget {
   const _ReviewTile({
     required this.row,
+    required this.type,
     required this.account,
+    required this.toAccount,
     required this.category,
+    required this.needsFixing,
     required this.onToggle,
     required this.onOpen,
   });
 
   final _Row row;
+  final TxnType type;
   final Account? account;
+  final Account? toAccount;
   final Category? category;
+  final bool needsFixing;
   final ValueChanged<bool>? onToggle;
   final VoidCallback? onOpen;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
     final d = row.draft;
-    final income = d.type == TxnType.income;
+    final income = type == TxnType.income;
+    final transfer = type == TxnType.transfer;
     final paise = d.amountPaise ?? 0;
+    final title = d.note.isNotEmpty
+        ? d.note
+        : (d.merchant ?? (income ? 'Received' : 'Unnamed'));
     final when = [
       if (d.date != null)
         shortDate(d.date!).replaceFirst(' ${d.date!.year}', ''),
@@ -276,71 +331,119 @@ class _ReviewTile extends StatelessWidget {
     ].join(' · ');
     final status = row.saved
         ? 'Saved'
+        : needsFixing
+        ? ((d.amountPaise ?? 0) <= 0
+              ? 'Amount missing, tap to fix'
+              : 'No account yet, tap to fix')
         : row.duplicate
         ? 'Already in Tracks'
+        : transfer
+        ? '${account?.name} → ${toAccount?.name}'
         : [category?.name, account?.name].nonNulls.join(' · ');
+    final warn = !row.saved && (row.duplicate || needsFixing);
+    final sign = transfer ? '' : (income ? '+' : '−');
+    final kindWord = transfer ? 'transfer' : (income ? 'income' : 'expense');
+    final spokenAmount = paise > 0 ? spokenPaise(paise) : 'no amount';
 
-    return Semantics(
-      label:
-          '${spokenPaise(paise)} ${income ? 'income' : 'expense'}, '
-          '${d.note.isEmpty ? 'unnamed' : d.note}, $when. $status',
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onOpen,
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            child: Row(
-              children: [
-                Checkbox(
-                  value: row.saved || row.selected,
-                  onChanged: onToggle == null
-                      ? null
-                      : (v) => onToggle!(v ?? false),
-                ),
-                CircleAvatar(
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onOpen,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              Checkbox(
+                value: row.saved || (row.selected && !needsFixing),
+                onChanged: onToggle == null
+                    ? null
+                    : (v) => onToggle!(v ?? false),
+                semanticLabel: 'Include $title',
+              ),
+              ExcludeSemantics(
+                child: CircleAvatar(
                   radius: 18,
-                  backgroundColor: Color(
-                    category?.color ?? Palette.sand.toARGB32(),
-                  ),
+                  backgroundColor: transfer
+                      ? Palette.sand
+                      : Color(category?.color ?? Palette.sand.toARGB32()),
                   foregroundColor: Colors.black87,
-                  child: Icon(iconFor(category?.icon ?? ''), size: 18),
+                  child: Icon(
+                    transfer ? Icons.swap_horiz : iconFor(category?.icon ?? ''),
+                    size: 18,
+                  ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Semantics(
+                  button: onOpen != null,
+                  excludeSemantics: true,
+                  label: '$title, $spokenAmount $kindWord, $when. $status',
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        d.note.isEmpty ? 'Unnamed' : d.note,
+                        title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.titleSmall,
                       ),
-                      Text(
-                        [when, status].where((s) => s.isNotEmpty).join(' · '),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: row.duplicate && !row.saved
-                              ? theme.expenseColor
-                              : null,
+                      if (when.isNotEmpty)
+                        Text(
+                          when,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: muted,
+                          ),
                         ),
+                      // Wraps instead of truncating: at large text sizes
+                      // "Already in Tracks" must stay readable.
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (warn)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 1, right: 4),
+                              child: Icon(
+                                Icons.warning_amber_rounded,
+                                size: 14,
+                                color: muted,
+                              ),
+                            ),
+                          Expanded(
+                            child: Text(
+                              status,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: muted,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  '${income ? '+' : '−'}${formatPaise(paise, hideZeroPaise: true)}',
-                  style: theme.textTheme.titleSmall?.copyWith(
-                    color: income ? theme.incomeColor : theme.expenseColor,
-                    fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+              const SizedBox(width: 8),
+              ExcludeSemantics(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 132),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerRight,
+                    child: Text(
+                      paise > 0 ? '$sign${formatPaise(paise)}' : '—',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: transfer
+                            ? muted
+                            : (income ? theme.incomeColor : theme.expenseColor),
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
                   ),
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

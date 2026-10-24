@@ -3,6 +3,7 @@ library;
 
 final _prefix = RegExp(r'^(?:₹|rs\.?|inr)\s*', caseSensitive: false);
 final _digits = RegExp(r'^\d*$');
+const _maxRupeeDigits = 12;
 
 /// Parses a rupee string such as `"1,23,456.78"`, `"Rs.500"`, `"₹ 99.99"` or
 /// `"500/-"` into paise. Returns `null` for anything that isn't a
@@ -20,6 +21,11 @@ int? parseRupeesToPaise(String input) {
   if (whole.isEmpty && frac.isEmpty) return null;
   if (!_digits.hasMatch(whole) || !_digits.hasMatch(frac)) return null;
   if (frac.length > 2) return null;
+  // Beyond ₹1 lakh crore it's a reference number or OCR noise, and would
+  // overflow int.
+  if (whole.replaceFirst(RegExp('^0+'), '').length > _maxRupeeDigits) {
+    return null;
+  }
 
   final rupees = whole.isEmpty ? 0 : int.parse(whole);
   final paise = frac.isEmpty ? 0 : int.parse(frac.padRight(2, '0'));

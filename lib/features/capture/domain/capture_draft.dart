@@ -200,10 +200,35 @@ CaptureOutcome captureFromScreenshotBlocks(List<String> blocks) {
     if (receipt != null) return _screenshotText(full);
     final drafts = <CaptureDraft>[];
     final seen = <String>{};
-    for (final b in blocks) {
-      // OCR wraps bubble lines; the SMS parser wants one flowing sentence.
-      final text = b.replaceAll(RegExp(r'\s*\n\s*'), ' ').trim();
-      final sms = parseBankSms(text);
+    // OCR wraps bubble lines; the SMS parser wants one flowing sentence.
+    // A line ending in - or / is a date OCR wrapped ("22-10-" / "26").
+    String flat(String b) => b
+        .replaceAll(RegExp(r'(?<=\d[-/])\s*\n\s*(?=\d)'), '')
+        .replaceAll(RegExp(r'\s*\n\s*'), ' ')
+        .trim();
+    for (var i = 0; i < blocks.length; i++) {
+      var text = flat(blocks[i]);
+      var sms = parseBankSms(text);
+      // OCR sometimes splits one bubble into two blocks. Join it with the
+      // next block when that one means nothing alone and joining reads
+      // more (an amount at all, or the date / ref no. the first half lacks).
+      int filled(SmsParseResult r) => r.kind == SmsKind.ignore
+          ? 0
+          : 1 + (r.date == null ? 0 : 1) + (r.refNo == null ? 0 : 1);
+      var joined = text;
+      var used = 0;
+      for (var j = 1; j <= 3 && i + j < blocks.length && filled(sms) < 3; j++) {
+        final next = flat(blocks[i + j]);
+        if (parseBankSms(next).kind != SmsKind.ignore) break;
+        joined = '$joined $next';
+        final again = parseBankSms(joined);
+        if (filled(again) > filled(sms)) {
+          text = joined;
+          sms = again;
+          used = j;
+        }
+      }
+      i += used;
       if (sms.kind == SmsKind.ignore) continue;
       final key = sms.refNo ?? '${sms.amountPaise}|${sms.date}|${sms.merchant}';
       if (!seen.add(key)) continue;
@@ -332,4 +357,28 @@ CaptureDraft _fromSms(SmsParseResult r, String raw) {
     refNo: r.refNo,
     rawText: raw,
   );
+}
+
+/// Combines the captures of several shared screenshots into one review,
+/// dropping repeats (same ref no., or same amount/date/payee).
+CaptureOutcome mergeCaptures(List<CaptureOutcome> outcomes) {
+  if (outcomes.length == 1) return outcomes.single;
+  final drafts = <CaptureDraft>[];
+  final seen = <String>{};
+  for (final o in outcomes) {
+    final found = switch (o) {
+      CaptureReady(:final draft) => [draft],
+      CaptureMany(:final drafts) => drafts,
+      CaptureIgnored() => const <CaptureDraft>[],
+    };
+    for (final d in found) {
+      final key = d.refNo ?? '${d.amountPaise}|${d.date}|${d.merchant}';
+      if (seen.add(key)) drafts.add(d);
+    }
+  }
+  if (drafts.isEmpty) {
+    return outcomes.whereType<CaptureIgnored>().firstOrNull ??
+        const CaptureIgnored('No payments found in those images');
+  }
+  return drafts.length == 1 ? CaptureReady(drafts.single) : CaptureMany(drafts);
 }

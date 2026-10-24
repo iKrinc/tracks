@@ -47,6 +47,47 @@ void main() {
     expect(o, isA<CaptureReady>());
   });
 
+  test('a bubble OCR split into two blocks is rejoined', () {
+    final o = captureFromScreenshotBlocks([
+      'Rs.120.00 paid thru A/C XX3388 on 20-10-26 09:14:02 to ARJUN TEST, '
+          'UPI Ref 600000000101. -Canara Bank',
+      'An amount of INR 2,000.00 has been CREDITED to',
+      'your account XX3388 on 22-10-26 18:02:45. UPI Ref 600000000103. '
+          '-Canara Bank',
+    ]);
+    expect(o, isA<CaptureMany>());
+    final drafts = (o as CaptureMany).drafts;
+    expect(drafts.map((d) => d.amountPaise), [12000, 200000]);
+    expect(drafts.last.refNo, '600000000103');
+  });
+
+  test('a bubble split into three blocks keeps its date and ref', () {
+    final o = captureFromScreenshotBlocks([
+      'Rs.120.00 paid thru A/C XX3388 on 20-10-26 09:14:02 to ARJUN TEST, '
+          'UPI Ref 600000000101. -Canara Bank',
+      'An amount of INR 2,000.00 has been CREDITED to',
+      'your account XX3388',
+      'on 22-10-26 18:02:45. UPI Ref 600000000103. -Canara Bank',
+    ]);
+    final last = (o as CaptureMany).drafts.last;
+    expect(last.date, DateTime(2026, 10, 22));
+    expect(last.refNo, '600000000103');
+  });
+
+  test('blocks as ML Kit really split a Canara credit bubble', () {
+    final o = captureFromScreenshotBlocks([
+      'Rs.450.00 paid thru A/C XX3388 on 21-10-26\n13:40:11 to SWIGGY, UPI '
+          'Ref 600000000102.\n-Canara Bank',
+      'An amount of INR 2,000.00 has been',
+      'CREDITED to your account XX3388 on 22-10-\n26 18:02:45. UPI Ref '
+          '600000000103. -Canara\nBank',
+    ]);
+    final last = (o as CaptureMany).drafts.last;
+    expect(last.amountPaise, 200000);
+    expect(last.date, DateTime(2026, 10, 22));
+    expect(last.time, (hour: 18, minute: 2));
+  });
+
   test('nothing useful gives a reason, not an error', () {
     expect(
       captureFromScreenshotBlocks(['11:08', 'Hello']),

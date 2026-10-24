@@ -1,14 +1,13 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'package:tracks/app/providers.dart';
 import 'package:tracks/data/app_database.dart';
 import 'package:tracks/features/backup/presentation/backup_actions.dart';
 import 'package:tracks/features/capture/data/ocr.dart';
+import 'package:tracks/features/capture/data/share_channel.dart';
 import 'package:tracks/features/capture/domain/capture_draft.dart';
 import 'package:tracks/features/capture/presentation/batch_review_sheet.dart';
 import 'package:tracks/features/capture/presentation/confirm_sheet.dart';
@@ -36,12 +35,17 @@ Future<bool> presentCapture(
     case CaptureReady(:final draft):
       return await showConfirmSheet(context, draft: draft) ?? false;
     case CaptureMany(:final drafts):
-      return await showBatchReview(context, drafts) ?? false;
+      return showBatchReview(context, drafts);
   }
 }
 
-/// Listens for text shared into the app (Android share sheet) and opens the
-/// Confirm Card. Wrap a screen that has a Scaffold above it in the tree.
+/// Listens for things shared into the app (Android share sheet): bank SMS
+/// text, payment screenshots, backups and CSVs. Wrap a screen that has a
+/// Scaffold above it in the tree.
+///
+/// Nothing a sharing app sends may crash Tracks: native code copies streams
+/// inside try/catch (MainActivity.kt), and every step here falls back to a
+/// SnackBar.
 class ShareIntake extends ConsumerStatefulWidget {
   const ShareIntake({super.key, required this.child});
 
@@ -52,25 +56,19 @@ class ShareIntake extends ConsumerStatefulWidget {
 }
 
 class _ShareIntakeState extends ConsumerState<ShareIntake> {
-  StreamSubscription<List<SharedMediaFile>>? _sub;
-
-  static bool get _supported =>
-      !kIsWeb &&
-      (defaultTargetPlatform == TargetPlatform.android ||
-          defaultTargetPlatform == TargetPlatform.iOS);
+  StreamSubscription<SharedPayload>? _sub;
 
   @override
   void initState() {
     super.initState();
-    if (!_supported) return;
-    final intent = ReceiveSharingIntent.instance;
+    if (!ShareChannel.supported) return;
+    final channel = ShareChannel.instance;
     // Shared while the app was closed…
-    intent.getInitialMedia().then((files) {
-      _handle(files);
-      intent.reset();
+    channel.initial().then((p) {
+      if (p != null) _safely(p);
     });
     // …or while it's running.
-    _sub = intent.getMediaStream().listen(_handle);
+    _sub = channel.stream.listen(_safely);
   }
 
   @override
@@ -79,26 +77,49 @@ class _ShareIntakeState extends ConsumerState<ShareIntake> {
     super.dispose();
   }
 
-  Future<void> _handle(List<SharedMediaFile> files) async {
+  void _say(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _safely(SharedPayload p) async {
+    try {
+      await _handle(p);
+    } catch (e, st) {
+      debugPrint('Share intake failed: $e\n$st');
+      _say("Couldn't read what was shared. Nothing was saved.");
+    }
+  }
+
+  Future<void> _handle(SharedPayload p) async {
+    if (p.error != null && p.files.isEmpty && (p.text ?? '').trim().isEmpty) {
+      _say("Couldn't open what was shared");
+      return;
+    }
+
     // A backup or CSV opened from Drive / Gmail / Files.
-    final file = files.where((f) => f.type == SharedMediaType.file).firstOrNull;
+    bool isImage(SharedFile f) =>
+        (f.mime ?? '').startsWith('image/') ||
+        RegExp(r'\.(png|jpe?g|webp|heic)$').hasMatch(f.name.toLowerCase());
+    final file = p.files.where((f) => !isImage(f)).firstOrNull;
     if (file != null) {
-      final name = file.path.toLowerCase();
-      final isJson =
-          name.endsWith('.json') || file.mimeType == 'application/json';
-      final isCsv =
-          name.endsWith('.csv') || (file.mimeType ?? '').contains('csv');
+      final name = file.name.toLowerCase();
+      final mime = file.mime ?? '';
+      final isJson = name.endsWith('.json') || mime == 'application/json';
+      final isCsv = name.endsWith('.csv') || mime.contains('csv');
       if (!isJson && !isCsv) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Tracks can open backup (.json) and .csv files'),
-            ),
-          );
-        }
+        _say('Tracks can open backup (.json) and .csv files');
         return;
       }
-      final contents = await File(file.path).readAsString();
+      String contents;
+      try {
+        contents = await File(file.path).readAsString();
+      } catch (_) {
+        _say("That file isn't readable text");
+        return;
+      }
       if (!mounted) return;
       await guardFileJob(context, () async {
         if (isJson) {
@@ -110,39 +131,45 @@ class _ShareIntakeState extends ConsumerState<ShareIntake> {
       return;
     }
 
-    final text = files
-        .where(
-          (f) =>
-              f.type == SharedMediaType.text || f.type == SharedMediaType.url,
-        )
-        .map((f) => f.path)
-        .join('\n')
-        .trim();
+    final text = (p.text ?? '').trim();
     if (text.isEmpty) {
-      // A payment screenshot: read it on-device, then parse like a receipt.
-      final image = files
-          .where((f) => f.type == SharedMediaType.image)
-          .firstOrNull;
-      if (image == null || !mounted) return;
+      // Payment screenshots: read each on-device, then parse.
+      final images = p.files.where(isImage).toList();
+      if (images.isEmpty || !mounted) {
+        _say('Nothing to add from that share');
+        return;
+      }
       final messenger = ScaffoldMessenger.of(context)
         ..showSnackBar(
-          const SnackBar(
-            content: Text('Reading the screenshot…'),
-            duration: Duration(seconds: 2),
+          SnackBar(
+            content: Text(
+              images.length == 1
+                  ? 'Reading the screenshot…'
+                  : 'Reading ${images.length} screenshots…',
+            ),
+            duration: const Duration(seconds: 2),
           ),
         );
-      List<String> ocr;
-      try {
-        ocr = await readTextBlocksFromImage(image.path);
-      } catch (_) {
-        messenger.showSnackBar(
-          const SnackBar(content: Text("Couldn't read that image")),
-        );
-        return;
+      final outcomes = <CaptureOutcome>[];
+      var unreadable = 0;
+      for (final image in images) {
+        try {
+          final blocks = await readTextBlocksFromImage(image.path);
+          outcomes.add(captureFromScreenshotBlocks(blocks));
+        } catch (_) {
+          unreadable++;
+        }
       }
       if (!mounted) return;
       messenger.hideCurrentSnackBar();
-      await presentCapture(context, captureFromScreenshotBlocks(ocr));
+      if (outcomes.isEmpty) {
+        _say("Couldn't read that image");
+        return;
+      }
+      if (unreadable > 0) {
+        _say("Skipped $unreadable image(s) that couldn't be read");
+      }
+      await presentCapture(context, mergeCaptures(outcomes));
       return;
     }
     // Accounts may still be loading on a cold start.
