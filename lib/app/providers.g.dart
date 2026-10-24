@@ -946,3 +946,101 @@ final class AccountTxnsFamily extends $Family
   @override
   String toString() => r'accountTxnsProvider';
 }
+
+/// Every transaction, newest first.
+
+@ProviderFor(allTransactions)
+final allTransactionsProvider = AllTransactionsProvider._();
+
+/// Every transaction, newest first.
+
+final class AllTransactionsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Transaction>>,
+          List<Transaction>,
+          Stream<List<Transaction>>
+        >
+    with
+        $FutureModifier<List<Transaction>>,
+        $StreamProvider<List<Transaction>> {
+  /// Every transaction, newest first.
+  AllTransactionsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'allTransactionsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$allTransactionsHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<List<Transaction>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<Transaction>> create(Ref ref) {
+    return allTransactions(ref);
+  }
+}
+
+String _$allTransactionsHash() => r'ec3d04d45798be82bc6202e99593144b4c931fd2';
+
+/// What's left before payday: spendable balances run forward through bills,
+/// EMIs, card dues and typical everyday spending. Null while loading or
+/// without a spendable account.
+
+@ProviderFor(cashForecast)
+final cashForecastProvider = CashForecastProvider._();
+
+/// What's left before payday: spendable balances run forward through bills,
+/// EMIs, card dues and typical everyday spending. Null while loading or
+/// without a spendable account.
+
+final class CashForecastProvider
+    extends $FunctionalProvider<CashForecast?, CashForecast?, CashForecast?>
+    with $Provider<CashForecast?> {
+  /// What's left before payday: spendable balances run forward through bills,
+  /// EMIs, card dues and typical everyday spending. Null while loading or
+  /// without a spendable account.
+  CashForecastProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'cashForecastProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$cashForecastHash();
+
+  @$internal
+  @override
+  $ProviderElement<CashForecast?> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  CashForecast? create(Ref ref) {
+    return cashForecast(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CashForecast? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CashForecast?>(value),
+    );
+  }
+}
+
+String _$cashForecastHash() => r'a12a31ad0e5df0213a737f6a938b7008aa17d5ca';

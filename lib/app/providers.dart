@@ -5,6 +5,7 @@ import 'package:tracks/features/accounts/domain/balances.dart';
 import 'package:tracks/features/accounts/domain/credit_card.dart';
 import 'package:tracks/features/budgets/domain/budget_math.dart';
 import 'package:tracks/features/capture/domain/rules.dart';
+import 'package:tracks/features/insights/domain/forecast.dart';
 import 'package:tracks/features/recurring/domain/reminder_plan.dart';
 import 'package:tracks/features/recurring/domain/schedule.dart';
 import 'package:tracks/features/transactions/domain/summary.dart';
@@ -229,3 +230,110 @@ List<PlannedReminder> reminderPlan(Ref ref) => planReminders([
 @riverpod
 Stream<List<Transaction>> accountTxns(Ref ref, int accountId) =>
     ref.watch(appDatabaseProvider).watchAccountTxns(accountId);
+
+/// Every transaction, newest first.
+@riverpod
+Stream<List<Transaction>> allTransactions(Ref ref) =>
+    ref.watch(appDatabaseProvider).watchAllTransactions();
+
+/// Accounts whose money you can spend today; cards and loans are owed.
+const spendableAccountTypes = {
+  AccountType.cash,
+  AccountType.bank,
+  AccountType.wallet,
+};
+
+/// What's left before payday: spendable balances run forward through bills,
+/// EMIs, card dues and typical everyday spending. Null while loading or
+/// without a spendable account.
+@riverpod
+CashForecast? cashForecast(Ref ref) {
+  final accounts = ref.watch(accountsProvider).value;
+  final txns = ref.watch(allTransactionsProvider).value;
+  final recurrings = ref.watch(recurringsProvider).value;
+  if (accounts == null || txns == null || recurrings == null) return null;
+  final balances = ref.watch(balancesProvider);
+  final liquid = {
+    for (final a in accounts)
+      if (spendableAccountTypes.contains(a.type)) a.id,
+  };
+  if (liquid.isEmpty) return null;
+  final today = DateTime.now();
+  final active = recurrings.where((r) => r.status == RecurringStatus.active);
+  // A card already paid by a bill (standing instruction) isn't counted twice.
+  final paidByBill = {for (final r in active) ?r.toAccountId};
+
+  int signed(Transaction t, int id) => switch (t.type) {
+    TxnType.income => t.amountPaise,
+    TxnType.expense => -t.amountPaise,
+    TxnType.transfer => t.toAccountId == id ? t.amountPaise : -t.amountPaise,
+  };
+
+  final cardDues = <ForecastOneOff>[];
+  for (final a in accounts) {
+    if (a.type != AccountType.creditCard ||
+        a.statementDay == null ||
+        paidByBill.contains(a.id)) {
+      continue;
+    }
+    final cycle = cardCycle(
+      statementDay: a.statementDay!,
+      dueDay: a.dueDay ?? a.statementDay!,
+      today: today,
+    );
+    final status = cardStatus(
+      moves: [
+        for (final t in txns)
+          if (t.accountId == a.id || t.toAccountId == a.id)
+            (at: t.occurredAt, paise: signed(t, a.id)),
+      ],
+      openingPaise: a.openingBalancePaise,
+      cycle: cycle,
+      limitPaise: a.creditLimitPaise ?? 0,
+    );
+    if (status.dueNowPaise > 0) {
+      cardDues.add((
+        date: cycle.due,
+        name: '${a.name} bill',
+        paise: status.dueNowPaise,
+      ));
+    }
+  }
+
+  return forecastCashflow(
+    today: today,
+    liquidPaise: liquid.fold(0, (sum, id) => sum + (balances[id] ?? 0)),
+    liquidAccounts: liquid,
+    bills: [
+      for (final r in active)
+        (
+          id: r.id,
+          name: r.name,
+          type: r.type,
+          amountPaise: r.amountPaise,
+          accountId: r.accountId,
+          toAccountId: r.toAccountId,
+          start: r.startDate,
+          unit: r.unit,
+          interval: r.interval,
+          lastPaid: r.lastPaid,
+        ),
+    ],
+    oneOffs: cardDues,
+    dailySpendPaise: averageDailySpend(
+      [
+        for (final t in txns)
+          (
+            type: t.type,
+            accountId: t.accountId,
+            paise: t.amountPaise,
+            at: t.occurredAt,
+            recurring:
+                t.linkedRecurringId != null || t.source == TxnSource.recurring,
+          ),
+      ],
+      today: today,
+      liquidAccounts: liquid,
+    ),
+  );
+}
