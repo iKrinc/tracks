@@ -29,8 +29,9 @@ class AppDatabase extends _$AppDatabase {
   ///     palette (only colours still equal to an old default).
   /// v5: card and loan fields on accounts; recurrings.to_account_id.
   /// v6: funds; accounts.fund_id and transactions.fund_id.
+  /// v7: funds.sync_account_id, funds.sync_transfer_id.
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   static QueryExecutor _open() => driftDatabase(
     name: 'tracks',
@@ -75,6 +76,11 @@ class AppDatabase extends _$AppDatabase {
         await m.createTable(funds);
         await m.addColumn(accounts, accounts.fundId);
         await m.addColumn(transactions, transactions.fundId);
+      }
+      // Created with these columns already when upgrading from < v6.
+      if (from == 6) {
+        await m.addColumn(funds, funds.syncAccountId);
+        await m.addColumn(funds, funds.syncTransferId);
       }
     },
     beforeOpen: (details) async {
@@ -238,8 +244,17 @@ class AppDatabase extends _$AppDatabase {
     transactions,
   )..orderBy([(t) => OrderingTerm.desc(t.occurredAt)])).watch();
 
+  /// Saves a transaction; a synced fund it touches gets its "remaining"
+  /// brought up to date.
   Future<int> addTransaction(TransactionsCompanion entry) =>
-      into(transactions).insert(entry);
+      transaction(() async {
+        final id = await into(transactions).insert(entry);
+        await _refreshSyncsFor([
+          entry.accountId.present ? entry.accountId.value : null,
+          entry.toAccountId.present ? entry.toAccountId.value : null,
+        ]);
+        return id;
+      });
 
   /// Transactions that look like the one about to be saved: the same bank
   /// ref no. if there is one, otherwise the same amount on the same day.
@@ -272,35 +287,194 @@ class AppDatabase extends _$AppDatabase {
 
   /// Creates a fund with one account to hold its money (opening [startPaise]
   /// counts as money already set aside). Returns the fund id.
+  /// Creates a fund with one account to hold its money. Its starting
+  /// [startPaise] is either new money typed in (the account's opening
+  /// balance) or, with [startFromAccountId], a real "initial" transfer out
+  /// of that account. Returns the fund id.
   Future<int> createFund({
     required String name,
     required int color,
     String icon = 'savings',
     int? budgetPaise,
     int startPaise = 0,
+    int? startFromAccountId,
+    DateTime? createdAt,
   }) => transaction(() async {
+    final at = createdAt ?? DateTime.now();
     final id = await into(funds).insert(
       FundsCompanion.insert(
         name: name,
         color: color,
         icon: Value(icon),
         budgetPaise: Value(budgetPaise),
+        createdAt: Value(at),
       ),
     );
-    await into(accounts).insert(
+    final fromAccount = startFromAccountId != null && startPaise > 0;
+    final pot = await into(accounts).insert(
       AccountsCompanion.insert(
         name: name,
         type: AccountType.bank,
         color: color,
         icon: icon,
-        openingBalancePaise: Value(startPaise),
-        // So "catering 50000 marriage" spends from the fund.
+        openingBalancePaise: Value(fromAccount ? 0 : startPaise),
+        // So "catering 50000 marriage" goes to the fund.
         matchHints: Value(name.toLowerCase()),
         fundId: Value(id),
       ),
     );
+    if (fromAccount) {
+      await into(transactions).insert(
+        TransactionsCompanion.insert(
+          type: TxnType.transfer,
+          amountPaise: startPaise,
+          accountId: startFromAccountId,
+          toAccountId: Value(pot),
+          note: const Value('initial'),
+          occurredAt: at,
+        ),
+      );
+    }
     return id;
   });
+
+  Future<List<int>> _fundAccountIds(int fundId) async => [
+    for (final a in await (select(
+      accounts,
+    )..where((a) => a.fundId.equals(fundId))).get())
+      a.id,
+  ];
+
+  Future<List<Transaction>> _fundTxns(List<int> pots) => (select(
+    transactions,
+  )..where((t) => t.accountId.isIn(pots) | t.toAccountId.isIn(pots))).get();
+
+  /// What fund [fundId] has left: its starting money, plus money in, minus
+  /// money out, not counting its own "remaining" sync transfer.
+  Future<int> fundRemaining(int fundId) async {
+    final fund = await (select(
+      funds,
+    )..where((f) => f.id.equals(fundId))).getSingle();
+    final pots = await _fundAccountIds(fundId);
+    var left = 0;
+    for (final a in await (select(
+      accounts,
+    )..where((a) => a.id.isIn(pots))).get()) {
+      left += a.openingBalancePaise;
+    }
+    for (final t in await _fundTxns(pots)) {
+      if (t.id == fund.syncTransferId) continue;
+      final from = pots.contains(t.accountId);
+      final to = t.toAccountId != null && pots.contains(t.toAccountId);
+      switch (t.type) {
+        case TxnType.income:
+          if (from) left += t.amountPaise;
+        case TxnType.expense:
+          if (from) left -= t.amountPaise;
+        case TxnType.transfer:
+          if (to && !from) left += t.amountPaise;
+          if (from && !to) left -= t.amountPaise;
+      }
+    }
+    return left;
+  }
+
+  /// Syncs fund [fundId] into main account [toAccountId]: its entries show
+  /// in the main timeline on their own dates, and what's left moves into
+  /// that account as "Marriage – remaining", right after the last entry.
+  Future<void> syncFund(int fundId, {required int toAccountId}) =>
+      transaction(() async {
+        await (update(funds)..where((f) => f.id.equals(fundId))).write(
+          FundsCompanion(
+            mode: const Value(FundMode.merged),
+            syncAccountId: Value(toAccountId),
+          ),
+        );
+        await _refreshSync(fundId);
+      });
+
+  /// Keeps fund [fundId] separate again: "remaining" goes; every real
+  /// entry stays.
+  Future<void> unsyncFund(int fundId) => transaction(() async {
+    final fund = await (select(
+      funds,
+    )..where((f) => f.id.equals(fundId))).getSingle();
+    if (fund.syncTransferId != null) {
+      await (delete(
+        transactions,
+      )..where((t) => t.id.equals(fund.syncTransferId!))).go();
+    }
+    await (update(funds)..where((f) => f.id.equals(fundId))).write(
+      const FundsCompanion(
+        mode: Value(FundMode.separate),
+        syncAccountId: Value(null),
+        syncTransferId: Value(null),
+      ),
+    );
+  });
+
+  /// Brings a synced fund's "remaining" transfer up to date: amount (either
+  /// way: an overspend is covered from the account) and date.
+  Future<void> _refreshSync(int fundId) async {
+    final fund = await (select(
+      funds,
+    )..where((f) => f.id.equals(fundId))).getSingle();
+    final target = fund.syncAccountId;
+    if (fund.mode != FundMode.merged || target == null) return;
+    final pots = await _fundAccountIds(fundId);
+    if (pots.isEmpty) return;
+    final left = await fundRemaining(fundId);
+    var last = fund.createdAt;
+    for (final t in await _fundTxns(pots)) {
+      if (t.id != fund.syncTransferId && t.occurredAt.isAfter(last)) {
+        last = t.occurredAt;
+      }
+    }
+    final row = TransactionsCompanion(
+      type: const Value(TxnType.transfer),
+      amountPaise: Value(left.abs()),
+      accountId: Value(left >= 0 ? pots.first : target),
+      toAccountId: Value(left >= 0 ? target : pots.first),
+      note: const Value('remaining'),
+      occurredAt: Value(last.add(const Duration(minutes: 1))),
+    );
+    final existing = fund.syncTransferId;
+    int? id = existing;
+    if (left == 0) {
+      if (existing != null) {
+        await (delete(transactions)..where((t) => t.id.equals(existing))).go();
+      }
+      id = null;
+    } else if (existing != null &&
+        await (update(
+              transactions,
+            )..where((t) => t.id.equals(existing))).write(row) >
+            0) {
+      // Updated in place.
+    } else {
+      id = await into(transactions).insert(row);
+    }
+    if (id != existing) {
+      await (update(funds)..where((f) => f.id.equals(fundId))).write(
+        FundsCompanion(syncTransferId: Value(id)),
+      );
+    }
+  }
+
+  /// Refreshes every synced fund whose accounts are among [accountIds].
+  Future<void> _refreshSyncsFor(Iterable<int?> accountIds) async {
+    final ids = accountIds.nonNulls.toList();
+    if (ids.isEmpty) return;
+    final fundIds = {
+      for (final a in await (select(
+        accounts,
+      )..where((a) => a.id.isIn(ids) & a.fundId.isNotNull())).get())
+        a.fundId!,
+    };
+    for (final f in fundIds) {
+      await _refreshSync(f);
+    }
+  }
 
   /// Closes fund [fundId]: moves [leftPaise] from [potId] to [toAccountId]
   /// (when both are given) and archives the fund and its accounts. Returns
@@ -312,6 +486,7 @@ class AppDatabase extends _$AppDatabase {
     int? toAccountId,
     String? note,
   }) => transaction(() async {
+    await unsyncFund(fundId);
     int? moved;
     if (leftPaise > 0 && potId != null && toAccountId != null) {
       moved = await into(transactions).insert(
@@ -492,6 +667,12 @@ class AppDatabase extends _$AppDatabase {
       into(appSettings)
           .insertOnConflictUpdate(AppSetting(key: key, value: value));
 
-  Future<int> deleteTransaction(int id) =>
-      (delete(transactions)..where((t) => t.id.equals(id))).go();
+  Future<int> deleteTransaction(int id) => transaction(() async {
+    final t = await (select(
+      transactions,
+    )..where((t) => t.id.equals(id))).getSingleOrNull();
+    final n = await (delete(transactions)..where((t) => t.id.equals(id))).go();
+    if (t != null) await _refreshSyncsFor([t.accountId, t.toAccountId]);
+    return n;
+  });
 }

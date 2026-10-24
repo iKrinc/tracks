@@ -43,6 +43,11 @@ class Funds extends Table {
   BoolColumn get archived => boolean().withDefault(const Constant(false))();
   TextColumn get note => text().withDefault(const Constant(''))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  /// When synced (mode merged), the main account its remaining money lands
+  /// in, and the "Marriage – remaining" transfer that carries it (v7).
+  IntColumn get syncAccountId => integer().nullable()();
+  IntColumn get syncTransferId => integer().nullable()();
 }
 
 class Accounts extends Table {

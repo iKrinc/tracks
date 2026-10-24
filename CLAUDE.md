@@ -133,8 +133,9 @@ input (shared SMS text | shared image | quick-add text | pasted text)
   review, own crash-proof share channel, parser fuzz tests, rules learned from corrections.
 - **Phase 3 started:** Reports tab, EMI principal/interest split, cash-flow forecast to
   payday, **Funds** (owner's request 2026-10-24: separate money for an event such as a
-  wedding: the fund is its own category; unsynced by default; synced rows read
-  "Fund – title"; schema v6). Next:
+  wedding: the fund is its own category; unsynced by default; sync picks an account and
+  adds "<Fund> – remaining"; deletes always confirm; Funds is a bottom tab; rows read
+  "Fund – title"; schema v7). Next:
   notification-listener capture (opt-in), more bank fixtures, savings goals.
 
 ---

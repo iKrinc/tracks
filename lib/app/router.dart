@@ -29,6 +29,11 @@ final appRouter = GoRouter(
         ),
         StatefulShellBranch(
           routes: [
+            GoRoute(path: '/funds', builder: (_, _) => const FundsScreen()),
+          ],
+        ),
+        StatefulShellBranch(
+          routes: [
             GoRoute(
               path: '/accounts',
               builder: (_, _) => const AccountsScreen(),
@@ -56,7 +61,6 @@ final appRouter = GoRouter(
     GoRoute(path: '/bills', builder: (_, _) => const RecurringScreen()),
     GoRoute(path: '/categories', builder: (_, _) => const CategoriesScreen()),
     GoRoute(path: '/rules', builder: (_, _) => const RulesScreen()),
-    GoRoute(path: '/funds', builder: (_, _) => const FundsScreen()),
     GoRoute(
       path: '/funds/:id',
       builder: (_, state) =>

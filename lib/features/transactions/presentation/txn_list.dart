@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tracks/app/icons.dart';
 import 'package:tracks/app/providers.dart';
 import 'package:tracks/app/theme.dart';
+import 'package:tracks/app/widgets/confirm.dart';
 import 'package:tracks/core/dates.dart';
 import 'package:tracks/core/money.dart';
 import 'package:tracks/data/app_database.dart';
@@ -78,24 +79,37 @@ List<Widget> dayGroupSlivers(
   List<Transaction> txns,
   TxnLookup lookup, {
   bool inFund = false,
-}) => [
-  for (final (day, items) in groupByDay(txns, (t) => t.occurredAt)) ...[
-    SliverToBoxAdapter(
-      child: DayHeader(day: day, items: items),
-    ),
-    SliverList.list(
-      children: [
-        for (final t in items) TxnTile(txn: t, lookup: lookup, inFund: inFund),
-      ],
-    ),
-  ],
-];
+}) {
+  // A list spanning months (a fund, search) needs the month on each day.
+  final months = {for (final t in txns) monthStart(t.occurredAt)};
+  return [
+    for (final (day, items) in groupByDay(txns, (t) => t.occurredAt)) ...[
+      SliverToBoxAdapter(
+        child: DayHeader(day: day, items: items, showMonth: months.length > 1),
+      ),
+      SliverList.list(
+        children: [
+          for (final t in items)
+            TxnTile(txn: t, lookup: lookup, inFund: inFund),
+        ],
+      ),
+    ],
+  ];
+}
 
 class DayHeader extends StatelessWidget {
-  const DayHeader({super.key, required this.day, required this.items});
+  const DayHeader({
+    super.key,
+    required this.day,
+    required this.items,
+    this.showMonth = false,
+  });
 
   final DateTime day;
   final List<Transaction> items;
+
+  /// "28 Wed · Oct 2026" instead of "28 Wed", for lists across months.
+  final bool showMonth;
 
   @override
   Widget build(BuildContext context) {
@@ -107,7 +121,13 @@ class DayHeader extends StatelessWidget {
         children: [
           Text('${day.day}', style: theme.textTheme.titleLarge),
           const SizedBox(width: 8),
-          Text(weekdayShort(day), style: theme.textTheme.labelLarge),
+          Text(
+            showMonth
+                ? '${weekdayShort(day)} · '
+                      '${shortDate(day).replaceFirst('${day.day} ', '')}'
+                : weekdayShort(day),
+            style: theme.textTheme.labelLarge,
+          ),
           const Spacer(),
           if (t.incomePaise > 0)
             SignedAmountText(TxnType.income, t.incomePaise),
@@ -146,18 +166,24 @@ class TxnTile extends ConsumerWidget {
         ? null
         : lookup.categories[txn.categoryId];
     final transfer = txn.type == TxnType.transfer;
-    // A fund's money in and out: the fund is its category.
-    final fund = transfer || account?.fundId == null
-        ? null
-        : lookup.funds[account!.fundId];
+    // A fund's money in and out: the fund is its category. Moves into or
+    // out of a fund ("initial", "remaining") carry its name too.
+    final fundId = account?.fundId ?? (transfer ? toAccount?.fundId : null);
+    final fund = fundId == null ? null : lookup.funds[fundId];
     final String title;
     final String subtitle;
     if (fund != null) {
       final what = txn.note.isNotEmpty
           ? txn.note
-          : (txn.type == TxnType.income ? 'Money in' : 'Money out');
+          : switch (txn.type) {
+              TxnType.income => 'Money in',
+              TxnType.expense => 'Money out',
+              TxnType.transfer => 'moved',
+            };
       title = inFund ? what : '${fund.name} – $what';
-      subtitle = '';
+      subtitle = transfer
+          ? '${account?.name ?? '?'} → ${toAccount?.name ?? '?'}'
+          : '';
     } else {
       title = txn.note.isNotEmpty
           ? txn.note
@@ -172,9 +198,35 @@ class TxnTile extends ConsumerWidget {
       TxnType.transfer => theme.colorScheme.onSurfaceVariant,
     };
 
+    // A synced fund's "remaining" is kept by the app: sync off removes it.
+    final syncedFrom = lookup.funds.values
+        .where((f) => f.syncTransferId == txn.id)
+        .firstOrNull;
+
     return Dismissible(
       key: ValueKey(txn.id),
       direction: DismissDirection.endToStart,
+      confirmDismiss: (_) async {
+        if (syncedFrom != null) {
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Turn off sync on ${syncedFrom.name} to remove this',
+                ),
+              ),
+            );
+          return false;
+        }
+        return confirmDestructive(
+          context,
+          title: 'Delete this transaction?',
+          message:
+              '$title, ${formatPaise(txn.amountPaise)} on '
+              '${shortDate(txn.occurredAt)}.',
+        );
+      },
       background: Container(
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 24),

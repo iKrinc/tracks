@@ -38,12 +38,36 @@ class _BackupScreenState extends ConsumerState<BackupScreen> {
       body: ListView(
         children: [
           if (_busy) const LinearProgressIndicator(),
+          section('Google Drive'),
+          tile(
+            Icons.add_to_drive,
+            'Save backup to Google Drive',
+            "Opens Android's \"Save to\" screen: pick Drive (or Downloads) "
+                'in its menu. Everything, restorable on any phone.',
+            () => _run(() async {
+              final saved = await saveJsonBackupToFolder(ref);
+              if (saved && context.mounted) {
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('Backup saved')));
+              }
+            }),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
+            child: Text(
+              'Automatic too: Android backs Tracks up to your Google account '
+              'with your other apps (Settings → Google → Backup, usually '
+              'daily on Wi-Fi while charging). A new phone signed in to the '
+              'same account brings it back. Tracks itself never goes online.',
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
           section('Back up'),
           tile(
-            Icons.save_alt,
-            'Full backup (JSON)',
-            'Everything, restorable on any phone. Save it to Drive, email or '
-                'a folder from the share sheet.',
+            Icons.share,
+            'Share full backup (JSON)',
+            'Send it to email, WhatsApp or any app from the share sheet.',
             () => _run(() => exportJsonBackup(ref)),
           ),
           tile(

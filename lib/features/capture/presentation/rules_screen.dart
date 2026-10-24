@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tracks/app/icons.dart';
 import 'package:tracks/app/providers.dart';
 import 'package:tracks/app/theme.dart';
+import 'package:tracks/app/widgets/confirm.dart';
 import 'package:tracks/data/app_database.dart';
 
 /// What Tracks learned from corrections ("Always for …" on the Confirm
@@ -99,6 +100,12 @@ class _RuleTile extends StatelessWidget {
     return Dismissible(
       key: ValueKey(rule.id),
       direction: DismissDirection.endToStart,
+      confirmDismiss: (_) => confirmDestructive(
+        context,
+        title: 'Forget "${rule.keyword}"?',
+        message: 'Tracks will guess again next time.',
+        action: 'Forget',
+      ),
       onDismissed: (_) => onDelete(),
       background: Container(
         color: theme.colorScheme.errorContainer,
@@ -126,7 +133,16 @@ class _RuleTile extends StatelessWidget {
         trailing: IconButton(
           icon: const Icon(Icons.delete_outline),
           tooltip: 'Forget this rule',
-          onPressed: onDelete,
+          onPressed: () async {
+            if (await confirmDestructive(
+              context,
+              title: 'Forget "${rule.keyword}"?',
+              message: 'Tracks will guess again next time.',
+              action: 'Forget',
+            )) {
+              onDelete();
+            }
+          },
         ),
       ),
     );

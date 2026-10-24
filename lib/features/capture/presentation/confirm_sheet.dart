@@ -467,6 +467,9 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
     final d = _d;
     if (d == null || !_suggestionsTaken || _asIou) return null;
     if (_type == TxnType.transfer) return null;
+    // A fund is its own category: nothing to learn.
+    final accounts = ref.read(accountsProvider).value ?? const <Account>[];
+    if (_fundOf(_accountId, accounts) != null) return null;
     final categoryChanged =
         _categoryId != null && _categoryId != _suggestedCategoryId;
     final accountChanged =

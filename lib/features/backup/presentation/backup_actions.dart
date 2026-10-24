@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
@@ -59,6 +60,23 @@ Future<void> exportJsonBackup(WidgetRef ref) async {
     const JsonEncoder.withIndent(' ').convert(backup),
     'application/json',
   );
+}
+
+/// Saves a full backup where the user picks in Android's "Save to" screen:
+/// Google Drive appears there (with the Drive app), as do Downloads and SD
+/// cards. Android does the upload; Tracks itself makes no network call.
+/// Resolves to false when the user backs out.
+Future<bool> saveJsonBackupToFolder(WidgetRef ref) async {
+  final backup = await buildBackup(ref.read(appDatabaseProvider));
+  final uri = await FilePicker.saveFile(
+    dialogTitle: 'Save Tracks backup',
+    fileName: 'tracks-backup-${_stamp()}.json',
+    bytes: Uint8List.fromList(
+      utf8.encode(const JsonEncoder.withIndent(' ').convert(backup)),
+    ),
+    mimeType: 'application/json',
+  );
+  return uri != null;
 }
 
 Future<void> exportCsv(WidgetRef ref) async {

@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tracks/app/icons.dart';
 import 'package:tracks/app/providers.dart';
 import 'package:tracks/app/theme.dart';
+import 'package:tracks/app/widgets/confirm.dart';
 import 'package:tracks/app/widgets/hero.dart';
 import 'package:tracks/core/dates.dart';
 import 'package:tracks/core/money.dart';
@@ -599,6 +600,14 @@ class _RecurringSheetState extends ConsumerState<_RecurringSheet> {
                         final r = widget.item!;
                         final db = ref.read(appDatabaseProvider);
                         final messenger = ScaffoldMessenger.of(context);
+                        if (!await confirmDestructive(
+                          context,
+                          title: 'Delete ${r.name}?',
+                          message:
+                              'Reminders stop. Payments already saved stay.',
+                        )) {
+                          return;
+                        }
                         await db.deleteRecurring(r.id);
                         if (!context.mounted) return;
                         Navigator.pop(context);
