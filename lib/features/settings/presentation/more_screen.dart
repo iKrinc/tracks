@@ -50,6 +50,12 @@ class MoreScreen extends ConsumerWidget {
             onTap: () => context.push('/bills'),
           ),
           ListTile(
+            leading: const Icon(Icons.celebration_outlined),
+            title: const Text('Funds'),
+            subtitle: const Text('A wedding, a trip: money tracked on its own'),
+            onTap: () => context.push('/funds'),
+          ),
+          ListTile(
             leading: const Icon(Icons.savings_outlined),
             title: const Text('Budgets'),
             subtitle: const Text('Monthly limits with a daily allowance'),

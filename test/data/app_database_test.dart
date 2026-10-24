@@ -203,4 +203,24 @@ void main() {
     await db.deleteRule(rule.id);
     expect(await db.select(db.rules).get(), isEmpty);
   });
+
+  test('createFund makes the fund and an account to hold its money', () async {
+    final id = await db.createFund(
+      name: 'Marriage',
+      color: 0xFFF6D5D0,
+      icon: 'celebration',
+      budgetPaise: 80000000,
+      startPaise: 20000000,
+    );
+    final fund = (await db.select(db.funds).get()).single;
+    expect(fund.id, id);
+    expect(fund.mode, FundMode.separate);
+    expect(fund.budgetPaise, 80000000);
+    final pot = await (db.select(
+      db.accounts,
+    )..where((a) => a.fundId.equals(id))).getSingle();
+    expect(pot.name, 'Marriage');
+    expect(pot.openingBalancePaise, 20000000);
+    expect(pot.matchHints, 'marriage');
+  });
 }

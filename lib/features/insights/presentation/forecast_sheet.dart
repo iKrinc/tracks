@@ -49,14 +49,15 @@ class ForecastTile extends ConsumerWidget {
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
       child: Material(
         color: short ? scheme.tertiaryContainer : scheme.surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
+        child: Semantics(
+          button: true,
+          excludeSemantics: true,
+          label: '$title. $subtitle. Opens the forecast',
           onTap: () => showForecastSheet(context),
-          child: Semantics(
-            button: true,
-            excludeSemantics: true,
-            label: '$title. $subtitle. Opens the forecast',
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => showForecastSheet(context),
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Row(
@@ -80,6 +81,7 @@ class ForecastTile extends ConsumerWidget {
                         Text(
                           subtitle,
                           style: theme.textTheme.bodySmall?.copyWith(
+                            fontFeatures: const [FontFeature.tabularFigures()],
                             color: short
                                 ? scheme.onTertiaryContainer
                                 : scheme.onSurfaceVariant,
@@ -128,6 +130,7 @@ class _ForecastSheet extends ConsumerWidget {
           bills += e.deltaPaise;
           return (
             event: e,
+            name: e.overdue ? '${e.name} (overdue)' : e.name,
             after: bills - f.dailySpendPaise * daysBetween(f.today, e.date),
           );
         }(),
@@ -163,11 +166,15 @@ class _ForecastSheet extends ConsumerWidget {
                     color: tokens.heroMuted,
                   ),
                 ),
-                AnimatedAmount(
-                  f.endPaise,
-                  semanticsPrefix: f.endPaise < 0 ? 'Short by ' : 'Left ',
-                  style: theme.textTheme.displaySmall?.copyWith(
-                    color: tokens.heroInk,
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: AnimatedAmount(
+                    f.endPaise,
+                    semanticsPrefix: '$endLabel: ',
+                    style: theme.textTheme.displaySmall?.copyWith(
+                      color: tokens.heroInk,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -211,9 +218,7 @@ class _ForecastSheet extends ConsumerWidget {
           for (final r in rows)
             _Row(
               date: _day(r.event.date, f.today),
-              name: r.event.overdue
-                  ? '${r.event.name} (overdue)'
-                  : r.event.name,
+              name: r.name,
               amount:
                   '${r.event.deltaPaise > 0 ? '+' : '−'}'
                   '${formatPaise(r.event.deltaPaise.abs())}',
@@ -222,7 +227,7 @@ class _ForecastSheet extends ConsumerWidget {
                   : theme.expenseColor,
               after: formatPaise(r.after),
               spoken:
-                  '${_day(r.event.date, f.today)}, ${r.event.name}, '
+                  '${_day(r.event.date, f.today)}, ${r.name}, '
                   '${spokenPaise(r.event.deltaPaise.abs())} '
                   '${r.event.deltaPaise > 0 ? 'income' : 'expense'}, '
                   'leaving ${spokenPaise(r.after)}',
@@ -321,7 +326,8 @@ class _Banner extends StatelessWidget {
           Expanded(
             child: Text(
               text,
-              style: TextStyle(color: scheme.onTertiaryContainer),
+              style: Theme.of(context).textTheme.bodyMedium
+                  ?.copyWith(color: scheme.onTertiaryContainer),
             ),
           ),
         ],
@@ -358,6 +364,7 @@ class _Row extends StatelessWidget {
       button: onTap != null,
       excludeSemantics: true,
       label: spoken,
+      onTap: onTap,
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
