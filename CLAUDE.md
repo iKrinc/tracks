@@ -134,6 +134,19 @@ input (shared SMS text | shared image | quick-add text | pasted text)
   3. Savings goals (target, date, progress, monthly amount), reusing the Funds design.
   5. Privacy: optional backup passphrase; hide Tracks in recent apps (`FLAG_SECURE`)
      when App lock is on.
+- **Future update (owner's request, 2026-10-24): automatic, continuous Google Drive sync.**
+  The backup saves itself to the owner's Drive after changes, with no manual "Save to
+  Drive". This is the first feature that makes network calls, and it is allowed because
+  the owner asked. Keep it opt-in and user-visible: a Backup switch, the last-synced time,
+  and a clear error when offline.
+  - **Approach to plan:** Google Sign-In plus the Drive API `appDataFolder` (a hidden
+    per-app folder, so no broad Drive access) or one chosen file.
+  - **When it uploads:** debounced uploads after edits, plus one on app close, over
+    Wi-Fi or any network as the user chooses.
+  - **Safety:** keep the last N versions so a bad sync can be rolled back, and restore
+    from that same file on a new phone.
+  - **Before building:** pair it with the backup passphrase (item 5) so what leaves the
+    phone is encrypted, and ask before adding the Google Sign-In / Drive packages.
 - **Maybe, some day:** Money Manager Excel import and XLSX export. The owner doesn't use
   Money Manager, so don't build this unless asked.
 - **Done in this round:** theme editor, app icon, home-screen quick-add widget, faster
