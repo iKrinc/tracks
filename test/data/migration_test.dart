@@ -16,13 +16,43 @@ void main() {
   setUpAll(() => verifier = SchemaVerifier(GeneratedHelper()));
 
   test('every version upgrades to the latest schema', () async {
-    for (var from = 1; from < 5; from++) {
+    for (var from = 1; from < 6; from++) {
       final connection = await verifier.startAt(from);
       final db = AppDatabase(connection);
-      await verifier.migrateAndValidate(db, 5);
+      await verifier.migrateAndValidate(db, 6);
       await db.close();
     }
   });
+
+  test(
+    'v5 → v6 adds funds; accounts and transactions keep their data',
+    () async {
+      final schema = await verifier.schemaAt(5);
+      schema.rawDatabase
+        ..execute(
+          "INSERT INTO accounts (id, name, type, color, icon) "
+          "VALUES (1, 'HDFC', 'bank', 0, 'account_balance')",
+        )
+        ..execute(
+          "INSERT INTO transactions (id, type, amount_paise, account_id, "
+          "occurred_at, source) VALUES (1, 'expense', 2000, 1, 1761300000, 'manual')",
+        );
+      final db = AppDatabase(schema.newConnection());
+      await verifier.migrateAndValidate(db, 6);
+      final a = (await db.select(db.accounts).get()).single;
+      final t = (await db.select(db.transactions).get()).single;
+      expect(a.fundId, isNull);
+      expect(t.amountPaise, 2000);
+      expect(t.fundId, isNull);
+      final fund = await db
+          .into(db.funds)
+          .insert(FundsCompanion.insert(name: 'Marriage', color: 0));
+      final f = (await db.select(db.funds).get()).single;
+      expect(f.id, fund);
+      expect(f.mode, FundMode.separate);
+      await db.close();
+    },
+  );
 
   test('v4 → v5 adds card/loan fields, existing accounts untouched', () async {
     final schema = await verifier.schemaAt(4);
@@ -31,7 +61,7 @@ void main() {
       "VALUES (1, 'HDFC', 'bank', 0, 'account_balance')",
     );
     final db = AppDatabase(schema.newConnection());
-    await verifier.migrateAndValidate(db, 5);
+    await verifier.migrateAndValidate(db, 6);
     final a = (await db.select(db.accounts).get()).single;
     expect(a.name, 'HDFC');
     expect(a.creditLimitPaise, isNull);
@@ -62,7 +92,7 @@ void main() {
         "(1, 'Transport', 'expense', ${0xFFAECBFA}, 'directions_car')",
       );
     final db = AppDatabase(schema.newConnection());
-    await verifier.migrateAndValidate(db, 5);
+    await verifier.migrateAndValidate(db, 6);
     final colours = {
       for (final a in await db.select(db.accounts).get()) a.name: a.color,
     };
@@ -85,7 +115,7 @@ void main() {
         "INSERT INTO app_settings (key, value) VALUES ('appLock', 'on')",
       );
     final db = AppDatabase(schema.newConnection());
-    await verifier.migrateAndValidate(db, 5);
+    await verifier.migrateAndValidate(db, 6);
     expect(await db.getSetting('appLock'), 'on');
     await db.saveRecurring(
       RecurringsCompanion.insert(
@@ -114,7 +144,7 @@ void main() {
       );
 
     final db = AppDatabase(schema.newConnection());
-    await verifier.migrateAndValidate(db, 5);
+    await verifier.migrateAndValidate(db, 6);
 
     final txns = await db.select(db.transactions).get();
     expect(txns.single.amountPaise, 2000);

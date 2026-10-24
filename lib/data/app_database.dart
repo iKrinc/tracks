@@ -9,6 +9,7 @@ part 'app_database.drift.dart';
 
 @DriftDatabase(
   tables: [
+    Funds,
     Accounts,
     Categories,
     Transactions,
@@ -27,8 +28,9 @@ class AppDatabase extends _$AppDatabase {
   /// v4: no schema change; recolours old blue/purple defaults to the warm
   ///     palette (only colours still equal to an old default).
   /// v5: card and loan fields on accounts; recurrings.to_account_id.
+  /// v6: funds; accounts.fund_id and transactions.fund_id.
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   static QueryExecutor _open() => driftDatabase(
     name: 'tracks',
@@ -68,6 +70,11 @@ class AppDatabase extends _$AppDatabase {
         if (from >= 3) {
           await m.addColumn(recurrings, recurrings.toAccountId);
         }
+      }
+      if (from < 6) {
+        await m.createTable(funds);
+        await m.addColumn(accounts, accounts.fundId);
+        await m.addColumn(transactions, transactions.fundId);
       }
     },
     beforeOpen: (details) async {

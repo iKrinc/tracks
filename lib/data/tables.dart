@@ -24,6 +24,27 @@ enum RecurringStatus { active, paused, ended }
 /// One aggregated row: the sum of all transactions sharing these keys.
 typedef TxnTotal = ({int accountId, int? toAccountId, TxnType type, int sum});
 
+/// Whether a fund's money counts in the main totals (v6).
+enum FundMode { separate, merged }
+
+/// Money kept for one purpose, such as a wedding or a trip, tracked on its
+/// own. Its accounts hold the money; main-account spends can be tagged to
+/// it. Added in v6.
+class Funds extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get name => text().withLength(min: 1, max: 60)();
+  TextColumn get icon => text().withDefault(const Constant('savings'))();
+  IntColumn get color => integer()();
+
+  /// What the event may cost in all; null = no budget.
+  IntColumn get budgetPaise => integer().nullable()();
+  TextColumn get mode =>
+      textEnum<FundMode>().withDefault(Constant(FundMode.separate.name))();
+  BoolColumn get archived => boolean().withDefault(const Constant(false))();
+  TextColumn get note => text().withDefault(const Constant(''))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+}
+
 class Accounts extends Table {
   IntColumn get id => integer().autoIncrement()();
   TextColumn get name => text().withLength(min: 1, max: 60)();
@@ -49,6 +70,9 @@ class Accounts extends Table {
   IntColumn get interestRateBp => integer().nullable()();
   IntColumn get emiPaise => integer().nullable()();
   IntColumn get tenureMonths => integer().nullable()();
+
+  /// Set when this account holds a fund's money (v6).
+  IntColumn get fundId => integer().nullable().references(Funds, #id)();
 }
 
 class Categories extends Table {
@@ -96,6 +120,10 @@ class Transactions extends Table {
   TextColumn get refNo => text().nullable()();
   IntColumn get linkedRecurringId => integer().nullable()();
   IntColumn get linkedDebtId => integer().nullable()();
+
+  /// A spend from a main account made for a fund (v6). Transactions on a
+  /// fund's own accounts belong to it through the account.
+  IntColumn get fundId => integer().nullable().references(Funds, #id)();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 }

@@ -21,6 +21,7 @@ Future<Map<String, Object?>> buildBackup(AppDatabase db) async => {
   'format': backupFormat,
   'schemaVersion': db.schemaVersion,
   'exportedAt': DateTime.now().toUtc().toIso8601String(),
+  'funds': [for (final r in await db.select(db.funds).get()) r.toJson()],
   'accounts': [for (final r in await db.select(db.accounts).get()) r.toJson()],
   'categories': [
     for (final r in await db.select(db.categories).get()) r.toJson(),
@@ -59,6 +60,8 @@ Future<RestoreSummary> restoreBackup(
   List<Map<String, dynamic>> list(String key) =>
       ((json[key] as List?) ?? const []).cast<Map<String, dynamic>>();
 
+  // Absent in backups from before schema v6.
+  final funds = list('funds').map(Fund.fromJson).toList();
   final accounts = list('accounts').map(Account.fromJson).toList();
   // Parents before subcategories, for the foreign key.
   final categories = list('categories').map(Category.fromJson).toList()
@@ -79,8 +82,10 @@ Future<RestoreSummary> restoreBackup(
     await db.delete(db.transactions).go();
     await db.delete(db.categories).go();
     await db.delete(db.accounts).go();
+    await db.delete(db.funds).go();
     await db.delete(db.appSettings).go();
     await db.batch((b) {
+      b.insertAll(db.funds, funds);
       b.insertAll(db.accounts, accounts);
       b.insertAll(db.categories, categories);
       b.insertAll(db.transactions, transactions);

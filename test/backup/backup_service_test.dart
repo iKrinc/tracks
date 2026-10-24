@@ -106,6 +106,57 @@ void main() {
     expect(await db.select(db.transactions).get(), isEmpty);
   });
 
+  test('a fund, its account and a tagged spend survive a restore', () async {
+    final fund = await db
+        .into(db.funds)
+        .insert(
+          FundsCompanion.insert(
+            name: 'Marriage',
+            color: 0,
+            budgetPaise: const Value(80000000),
+          ),
+        );
+    final pot = await db
+        .into(db.accounts)
+        .insert(
+          AccountsCompanion.insert(
+            name: 'Marriage fund',
+            type: AccountType.bank,
+            color: 0,
+            icon: 'savings',
+            fundId: Value(fund),
+          ),
+        );
+    await db.addTransaction(
+      TransactionsCompanion.insert(
+        type: TxnType.expense,
+        amountPaise: 500000,
+        accountId: await cashId(db),
+        occurredAt: DateTime(2026, 10, 1),
+        fundId: Value(fund),
+      ),
+    );
+    final json = jsonEncode(await buildBackup(db));
+    final fresh = memoryDb();
+    await restoreBackup(fresh, jsonDecode(json));
+    final f = (await fresh.select(fresh.funds).get()).single;
+    expect(f.name, 'Marriage');
+    expect(f.budgetPaise, 80000000);
+    final a = await (fresh.select(
+      fresh.accounts,
+    )..where((a) => a.id.equals(pot))).getSingle();
+    expect(a.fundId, f.id);
+    expect((await fresh.select(fresh.transactions).get()).single.fundId, f.id);
+    await fresh.close();
+  });
+
+  test('backups from before funds (v6) still restore', () async {
+    final old = await buildBackup(db)
+      ..remove('funds');
+    final s = await restoreBackup(db, old);
+    expect(s.accounts, 1);
+  });
+
   test('backups from before budgets/recurring still restore', () async {
     final old = await buildBackup(db)
       ..remove('budgets')
