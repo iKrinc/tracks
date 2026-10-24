@@ -182,4 +182,25 @@ void main() {
       throwsA(isA<SqliteException>()),
     );
   });
+
+  test('learnRule creates, then updates only what a correction sets', () async {
+    final cats = await db.select(db.categories).get();
+    final accs = await db.select(db.accounts).get();
+    await db.learnRule('swiggy', categoryId: cats[0].id);
+    await db.learnRule('swiggy', accountId: accs[0].id);
+    var rule = (await db.select(db.rules).get()).single;
+    expect(rule.keyword, 'swiggy');
+    expect(rule.categoryId, cats[0].id);
+    expect(rule.accountId, accs[0].id);
+
+    await db.learnRule('swiggy', categoryId: cats[1].id);
+    await db.bumpRule(rule.id);
+    rule = (await db.select(db.rules).get()).single;
+    expect(rule.categoryId, cats[1].id);
+    expect(rule.accountId, accs[0].id);
+    expect(rule.hits, 1);
+
+    await db.deleteRule(rule.id);
+    expect(await db.select(db.rules).get(), isEmpty);
+  });
 }

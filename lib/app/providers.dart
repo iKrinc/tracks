@@ -4,6 +4,7 @@ import 'package:tracks/data/app_database.dart';
 import 'package:tracks/features/accounts/domain/balances.dart';
 import 'package:tracks/features/accounts/domain/credit_card.dart';
 import 'package:tracks/features/budgets/domain/budget_math.dart';
+import 'package:tracks/features/capture/domain/rules.dart';
 import 'package:tracks/features/recurring/domain/reminder_plan.dart';
 import 'package:tracks/features/recurring/domain/schedule.dart';
 import 'package:tracks/features/transactions/domain/summary.dart';
@@ -26,6 +27,21 @@ Stream<List<Account>> accounts(Ref ref) =>
 @riverpod
 Stream<List<Account>> allAccounts(Ref ref) =>
     ref.watch(appDatabaseProvider).watchAllAccounts();
+
+@riverpod
+Stream<List<Rule>> rules(Ref ref) =>
+    ref.watch(appDatabaseProvider).watchRules();
+
+/// Rules in the shape the pure matcher takes.
+List<RuleLike> ruleLikes(List<Rule> rules) => [
+  for (final r in rules)
+    (
+      id: r.id,
+      keyword: r.keyword,
+      categoryId: r.categoryId,
+      accountId: r.accountId,
+    ),
+];
 
 @riverpod
 Stream<List<Category>> categories(Ref ref, CategoryKind kind) =>

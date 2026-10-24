@@ -10,6 +10,7 @@ import 'package:tracks/data/default_data.dart';
 import 'package:tracks/features/capture/domain/account_match.dart';
 import 'package:tracks/features/capture/domain/capture_draft.dart';
 import 'package:tracks/features/capture/domain/category_guess.dart';
+import 'package:tracks/features/capture/domain/rules.dart';
 
 /// Opens the Confirm Card, pre-filled from [draft] (or blank for the form
 /// fallback). Resolves to `true` when a transaction was saved.
@@ -47,6 +48,17 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
   bool _categoryTouched = false;
   List<Transaction> _duplicates = const [];
   late bool _asIou = widget.draft?.person != null;
+
+  /// The learned rule that pre-filled this card, if any.
+  RuleLike? _rule;
+  bool _ruleLooked = false;
+
+  /// What the card first suggested; changing it is a correction worth
+  /// remembering.
+  int? _suggestedAccountId;
+  int? _suggestedCategoryId;
+  bool _suggestionsTaken = false;
+  bool _remember = true;
   String? _error;
 
   CaptureDraft? get _d => widget.draft;
@@ -93,6 +105,8 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
     if (accounts.isEmpty) return;
     final d = _d;
     if (_accountId == null) {
+      // The capture's own account hint beats a learned rule.
+      final ruleAccount = _rule?.accountId;
       final id = d == null
           ? null
           : d.accountId ??
@@ -101,7 +115,8 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
                   hint: d.accountHint,
                   last4: d.accountLast4,
                   bank: d.bankHint,
-                );
+                ) ??
+                (accounts.any((a) => a.id == ruleAccount) ? ruleAccount : null);
       _accountMatched = id != null;
       // Unmatched (e.g. a card bill payment, whose source bank is rarely in
       // the SMS): fall back to the first account; the user can change it.
@@ -146,7 +161,21 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
     final categories =
         ref.watch(categoriesProvider(kind)).value ?? const <Category>[];
 
-    _resolveAccounts(accounts);
+    final rules = ref.watch(rulesProvider);
+    if (!_ruleLooked && rules.hasValue) {
+      _ruleLooked = true;
+      final d = _d;
+      if (d != null) {
+        _rule = findRule(
+          ruleLikes(rules.value!),
+          merchant: d.merchant,
+          note: d.note,
+        );
+      }
+    }
+    // Wait for rules (a few ms) so a learned account isn't overridden by
+    // the first-account fallback.
+    if (_ruleLooked) _resolveAccounts(accounts);
     final presetCategory = _d?.categoryId;
     if (!_categoryTouched &&
         _categoryId == null &&
@@ -154,7 +183,18 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
         categories.any((c) => c.id == presetCategory)) {
       _categoryId = presetCategory;
     }
-    if (!_categoryTouched && _categoryId == null && categories.isNotEmpty) {
+    final ruleCategory = _rule?.categoryId;
+    if (!_categoryTouched &&
+        _categoryId == null &&
+        ruleCategory != null &&
+        categories.any((c) => c.id == ruleCategory)) {
+      _categoryId = ruleCategory;
+    }
+    // The keyword guess waits for rules too, or it would beat a learned one.
+    if (_ruleLooked &&
+        !_categoryTouched &&
+        _categoryId == null &&
+        categories.isNotEmpty) {
       final name = guessCategoryName(
         '${_d?.categoryText ?? ''} ${_note.text}',
         categories.map((c) => c.name),
@@ -163,7 +203,16 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
         _categoryId = categories.firstWhere((c) => c.name == name).id;
       }
     }
+    if (!_suggestionsTaken &&
+        _ruleLooked &&
+        accounts.isNotEmpty &&
+        categories.isNotEmpty) {
+      _suggestionsTaken = true;
+      _suggestedAccountId = _accountId;
+      _suggestedCategoryId = _categoryId;
+    }
     final transfer = _type == TxnType.transfer;
+    final learnKey = _learnKey();
     final unmatchedFrom = _unmatchedLabel(to: false);
     final unmatchedTo = transfer ? _unmatchedLabel(to: true) : null;
 
@@ -290,6 +339,20 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
                     selected: _asIou,
                     onSelected: (v) => setState(() => _asIou = v),
                   ),
+                if (learnKey != null)
+                  FilterChip(
+                    label: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 240),
+                      child: Text(
+                        'Always for "$learnKey"',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    tooltip: 'Next time, fill this in the same way',
+                    showCheckmark: true,
+                    selected: _remember,
+                    onSelected: (v) => setState(() => _remember = v),
+                  ),
                 if (_d?.source == TxnSource.sms)
                   const Chip(
                     avatar: Icon(Icons.sms_outlined, size: 18),
@@ -318,6 +381,20 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
         ),
       ),
     );
+  }
+
+  /// The keyword to offer "Always for …" under, when the user corrected
+  /// the suggested category or account of a capture.
+  String? _learnKey() {
+    final d = _d;
+    if (d == null || !_suggestionsTaken || _asIou) return null;
+    if (_type == TxnType.transfer) return null;
+    final categoryChanged =
+        _categoryId != null && _categoryId != _suggestedCategoryId;
+    final accountChanged =
+        _accountId != null && _accountId != _suggestedAccountId;
+    if (!categoryChanged && !accountChanged) return null;
+    return ruleKey(merchant: d.merchant, note: _note.text);
   }
 
   String _dateLabel(DateTime d) {
@@ -397,6 +474,16 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
         linkedRecurringId: Value(d?.linkedRecurringId),
       ),
     );
+    final learnKey = _learnKey();
+    if (learnKey != null && _remember) {
+      await db.learnRule(
+        learnKey,
+        categoryId: _categoryId != _suggestedCategoryId ? _categoryId : null,
+        accountId: _accountId != _suggestedAccountId ? _accountId : null,
+      );
+    } else if (_rule != null && learnKey == null) {
+      await db.bumpRule(_rule!.id);
+    }
     final recurringId = d?.linkedRecurringId;
     if (recurringId != null) {
       await ref.read(appDatabaseProvider).markRecurringPaid(recurringId, _date);

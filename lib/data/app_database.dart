@@ -257,6 +257,44 @@ class AppDatabase extends _$AppDatabase {
     return q.get();
   }
 
+  Stream<List<Rule>> watchRules() =>
+      (select(rules)..orderBy([(r) => OrderingTerm.asc(r.keyword)])).watch();
+
+  /// Remembers a correction for [keyword]. Updating an existing rule keeps
+  /// whichever of category/account this correction doesn't set.
+  Future<void> learnRule(String keyword, {int? categoryId, int? accountId}) =>
+      into(rules).insert(
+        RulesCompanion.insert(
+          keyword: keyword,
+          categoryId: Value(categoryId),
+          accountId: Value(accountId),
+        ),
+        onConflict: DoUpdate(
+          (_) => RulesCompanion(
+            categoryId: categoryId == null
+                ? const Value.absent()
+                : Value(categoryId),
+            accountId: accountId == null
+                ? const Value.absent()
+                : Value(accountId),
+          ),
+          target: [rules.keyword],
+        ),
+      );
+
+  /// Counts a capture the rule filled in and the user kept.
+  Future<void> bumpRule(int id) => customUpdate(
+    'UPDATE rules SET hits = hits + 1 WHERE id = ?',
+    variables: [Variable.withInt(id)],
+    updates: {rules},
+  );
+
+  Future<int> deleteRule(int id) =>
+      (delete(rules)..where((r) => r.id.equals(id))).go();
+
+  /// Puts back a deleted rule (Undo).
+  Future<void> restoreRule(Rule r) => into(rules).insertOnConflictUpdate(r);
+
   /// Sums per (account, to-account, type), for balances.
   Stream<List<TxnTotal>> watchTxnTotals() =>
       customSelect(

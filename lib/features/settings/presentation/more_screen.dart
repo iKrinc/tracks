@@ -61,6 +61,12 @@ class MoreScreen extends ConsumerWidget {
             subtitle: const Text('Add, rename, recolour, reorder'),
             onTap: () => context.push('/categories'),
           ),
+          ListTile(
+            leading: const Icon(Icons.auto_awesome_outlined),
+            title: const Text('Rules'),
+            subtitle: const Text('What Tracks learned from your corrections'),
+            onTap: () => context.push('/rules'),
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
             child: Text('Your data', style: theme.textTheme.titleSmall),

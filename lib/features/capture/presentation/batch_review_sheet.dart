@@ -10,6 +10,7 @@ import 'package:tracks/data/app_database.dart';
 import 'package:tracks/features/capture/domain/account_match.dart';
 import 'package:tracks/features/capture/domain/capture_draft.dart';
 import 'package:tracks/features/capture/domain/category_guess.dart';
+import 'package:tracks/features/capture/domain/rules.dart';
 import 'package:tracks/features/capture/presentation/confirm_sheet.dart';
 
 /// Review several captured transactions (e.g. a screenshot of an SMS
@@ -64,6 +65,9 @@ class _BatchReviewState extends ConsumerState<_BatchReview> {
   late final _rows = [for (final d in widget.drafts) _Row(d)];
   bool _busy = false;
 
+  /// Learned rules, refreshed every build.
+  List<RuleLike> _rules = const [];
+
   @override
   void initState() {
     super.initState();
@@ -92,16 +96,26 @@ class _BatchReviewState extends ConsumerState<_BatchReview> {
   Iterable<MatchableAccount> _matchable(List<Account> accounts) =>
       accounts.map((a) => (id: a.id, name: a.name, matchHints: a.matchHints));
 
-  int? _accountFor(CaptureDraft d, List<Account> accounts) =>
-      matchAccount(
-        _matchable(accounts),
-        hint: d.accountHint,
-        last4: d.accountLast4,
-        bank: d.bankHint,
-      ) ??
-      accounts.firstOrNull?.id;
+  RuleLike? _ruleFor(CaptureDraft d) =>
+      findRule(_rules, merchant: d.merchant, note: d.note);
+
+  /// The capture's own account hint, then a learned rule, then the first
+  /// account.
+  int? _accountFor(CaptureDraft d, List<Account> accounts) {
+    final ruleAccount = _ruleFor(d)?.accountId;
+    return matchAccount(
+          _matchable(accounts),
+          hint: d.accountHint,
+          last4: d.accountLast4,
+          bank: d.bankHint,
+        ) ??
+        (accounts.any((a) => a.id == ruleAccount) ? ruleAccount : null) ??
+        accounts.firstOrNull?.id;
+  }
 
   int? _categoryFor(CaptureDraft d, List<Category> categories) {
+    final ruleCategory = _ruleFor(d)?.categoryId;
+    if (categories.any((c) => c.id == ruleCategory)) return ruleCategory;
     final name = guessCategoryName(
       '${d.categoryText} ${d.note}',
       categories.map((c) => c.name),
@@ -199,6 +213,7 @@ class _BatchReviewState extends ConsumerState<_BatchReview> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final accounts = ref.watch(accountsProvider).value ?? const <Account>[];
+    _rules = ruleLikes(ref.watch(rulesProvider).value ?? const []);
     final categories = {
       for (final k in CategoryKind.values)
         k: ref.watch(categoriesProvider(k)).value ?? const <Category>[],
