@@ -90,9 +90,15 @@ Why share instead of reading SMS automatically: Play policy forbids `READ_SMS`
 for this kind of app, and sharing keeps you in control of what Tracks sees.
 
 ### 3.3 Sharing a payment screenshot (OCR)
-`ocr.dart`, `screenshot_parser.dart`, intent filter `SEND image/*`
-1. The image arrives as a file path. ML Kit's **on-device** Latin text model
-   reads it (`readTextFromImage`), and the image never leaves the phone.
+`ocr.dart`, `screenshot_parser.dart`, `MainActivity.kt`, intent filters
+`SEND image/*` and `SEND_MULTIPLE image/*`
+1. Android hands Tracks a content URI. Our own `tracks/share` channel in
+   `MainActivity.kt` copies it into the app cache on a background thread,
+   inside try/catch, capped at 25 MB. A revoked or unreadable URI becomes the
+   message "Couldn't open what was shared" instead of a crash. ML Kit's
+   **on-device** Latin model then reads it (`readTextBlocksFromImage`) and
+   returns one string per **block** (a receipt section, an SMS bubble). The
+   image never leaves the phone.
 2. `parsePaymentScreenshot` is built for receipt layouts rather than SMS
    sentences:
    - **Kind:** "Received from" makes it a credit; "Paid to", "Debited from" or "Transaction successful" make it a debit.
@@ -101,11 +107,22 @@ for this kind of app, and sharing keeps you in control of what Tracks sees.
    - **Account:** the masked digits on the bank line. If OCR garbles the mask (`*** * 1234`, or drops it), it falls back to the trailing 4 digits of that bank line. Lines with a UPI ID are skipped, because `zomato@hdfcbank` names the payee's bank, not yours.
    - **Reference:** UTR, "UPI transaction ID" or "Ref No".
    - **Date:** "23 Oct 2026".
-3. If it doesn't look like a receipt, it falls back to the SMS parser, which
-   covers screenshots of SMS.
+   - **GPay 2025+ layout:** "To NAME" / "From NAME" at the top with "Completed" below. If OCR drops the big ₹, it takes the bare number under the header (never a year, time or reference). Masked UPI IDs (`••••29-2@ybl`) are ignored.
+3. If it isn't a receipt, `captureFromScreenshotBlocks` treats it as a
+   **screenshot of an SMS thread**: every bubble is parsed as an SMS, so one
+   screenshot can give several transactions. OCR sometimes splits one bubble
+   into 2–4 blocks, or breaks a date across lines ("22-10-" / "26"). Blocks
+   that mean nothing alone are joined with the next ones while that fills in
+   more fields (amount, date, ref). Repeats are dropped by ref no.
+4. Several transactions open the **batch review** sheet: one row each, ticked
+   by default. Ones already in Tracks are flagged and unticked; rows with no
+   amount must go through the Confirm Card. "Save N" saves the ticked ones.
+   Sharing several screenshots at once merges them into one review.
 
-Tested on 9 anonymised fixtures plus a real OCR run on the emulator (a
-synthetic GPay receipt → ₹349, ZOMATO, HDFC, 23 Oct).
+Tested on 13 anonymised fixtures built from real GPay, Canara and Kotak
+samples, plus real OCR runs on the emulator (a synthetic 3-message Canara
+thread → 3 drafts with dates, times and refs; re-sharing it flags all three
+as already saved).
 
 ### 3.4 The Confirm Card (where every capture lands)
 `confirm_sheet.dart`
@@ -120,8 +137,22 @@ synthetic GPay receipt → ₹349, ZOMATO, HDFC, 23 Oct).
    the same day, shows a "Possible duplicate" banner and changes the button to
    "Save anyway". Sharing the SMS *and* the screenshot of one payment is caught
    by the reference number.
-4. **Saving** writes the transaction with `source` (manual, sms, screenshot,
-   quickText, recurring) and the raw text kept for audit.
+4. **Learned rules** (`rules.dart`): if you change the category or account
+   the card suggested, an **Always for "swiggy"** chip appears (on by
+   default). Saving stores a Rule keyed on the merchant (a UPI ID's name part,
+   so `zomato@hdfcbank` → "zomato") or else the note. Next time, a rule
+   matching exactly or as whole words (longest wins) fills the category and
+   account *before* the word list. The capture's own account hint (XX3388)
+   still beats a rule. More → Rules lists them with a use count; swipe to
+   forget, with Undo.
+5. **EMI interest split:** a transfer into a loan account that has a rate
+   shows "₹4,515.12 lowers the loan / ₹1,050.00 interest at 10.5%". Saving
+   writes the interest as an expense (EMI & Loans) and only the principal as
+   the transfer, in one database transaction. The toggle turns it off for
+   prepayments.
+6. **Saving** writes the transaction with `source` (manual, sms, screenshot,
+   quickText, recurring) and the raw text kept for audit. The SMS's own time
+   of day is used when it has one.
 
 ### 3.5 Views: Daily, Monthly, Yearly, Calendar
 `home_screen.dart`, `summary.dart`, `calendar_view.dart`
@@ -192,6 +223,10 @@ balance maths covers everything.
   - **Minimum due** is an *estimate* (5%, at least ₹200).
 - **Loans:** the standard reducing-balance EMI. ₹5 lakh at 9.5% for 60 months
   works out to ₹10,500.93 a month. Months left is the amortisation inverse.
+  Each repayment is split (`splitEmi`): interest = what's still owed × rate
+  ÷ 12, in integer paise; only the rest lowers the loan. So the outstanding
+  amount and "months left" follow the bank's schedule, and interest shows up
+  in spending where it belongs.
 - **IOUs from quick-add:** "lent 2000 to ravi" offers "Track as IOU with
   ravi", which finds or creates Ravi's account and saves a transfer.
 
@@ -217,7 +252,20 @@ hides an account; it doesn't erase money.
   background. That's long enough that the fingerprint prompt itself doesn't
   re-lock the app.
 
-### 3.12 Design system
+### 3.12 Crash safety
+- Every capture function runs inside `_safely`: if a parser throws on a
+  format nobody foresaw, you get a blank Confirm Card with the raw text kept,
+  never a crash.
+- Share intake catches each step (file read, OCR, parse) and turns failures
+  into a SnackBar ("Nothing was saved").
+- `PlatformDispatcher.onError` logs anything uncaught instead of dying; in
+  release builds a widget that fails to build shows a quiet note, not a grey
+  box.
+- **Fuzz tests** throw 2,100+ random and mutated real-format inputs at each
+  parser. They found a real bug: 13+ digit numbers overflowed `int.parse`.
+  Amounts are now capped at 12 rupee digits.
+
+### 3.13 Design system
 - **The "Marigold & chai" palette:**
   - warm cream paper and espresso ink, with a marigold → coral hero gradient
   - dark mode uses cocoa → forest
@@ -236,19 +284,17 @@ Honest list, roughly ordered by how much it matters:
 
 1. **Capture still needs a share.** Nothing happens automatically. That's
    deliberate (Play policy, privacy), but it's still friction.
-2. **Parsers are heuristics.** They're tested on synthetic fixtures. Real
-   banks change formats, and some (regional banks, credit unions, other
-   languages) will slip through. We need real, anonymised samples.
-3. **OCR is Latin-script only.** Hindi or regional-language receipts, unusual
-   layouts and dark-mode screenshots will parse less well. The sharing plugin
-   also **crashes the app** if a sender shares an image without granting read
-   access (seen with an adb-sent share; normal apps grant access).
-4. **No learning yet.** The `Rules` table exists, but corrections don't become
-   rules ("always Food delivery for SWIGGY"). The category guess is a fixed
-   word list.
-5. **Loans treat the whole EMI as principal.** Interest isn't split out, so
-   the outstanding balance falls faster than in reality and "months left" is
-   optimistic.
+2. **Parsers are heuristics.** They now cover real GPay, Canara and Kotak
+   formats, but other banks (SBI, HDFC, ICICI, Axis, regional banks) and
+   current PhonePe/Paytm layouts are only covered by synthetic fixtures.
+3. **OCR is Latin-script only.** Hindi or regional-language receipts and
+   dark-mode screenshots will parse less well.
+4. **Rules are simple.** They match words, not patterns (a different UPI ID
+   per shop branch makes a new rule each time), and they set category and
+   account but not notes or tags.
+5. **The EMI split assumes reducing balance and monthly interest.** Flat-rate
+   loans, floating-rate changes and a first broken-period EMI will be slightly
+   off; the toggle lets you book a payment entirely as principal.
 6. **Card minimum due is an estimate.** Statements aren't imported.
 7. **Reminders can arrive late** on phones with aggressive battery savers
    (Xiaomi, Oppo, Vivo), because they're inexact alarms. There's no
@@ -271,13 +317,13 @@ Honest list, roughly ordered by how much it matters:
 
 | # | Work | Fixes |
 |---|---|---|
-| 1 | **Learn from corrections**: when you change a guessed category or account, offer "Always use this for SWIGGY" and write a Rule that runs before the word list | 4 |
-| 2 | **Real-world parser fixtures**: you share a few anonymised SMS and screenshots from your banks, and they become tests | 2, 3 |
-| 3 | **Harden image intake**: patch or fork the sharing plugin so a missing permission shows a message instead of crashing | 3 |
-| 4 | **EMI interest split**: record each EMI as principal (transfer) plus interest (expense) using the amortisation schedule | 5 |
+| 1 | **Cash-flow forecast**: from bills and EMIs, "what's left on payday" (Phase 3) | — |
+| 2 | **More real-world fixtures**: SBI, HDFC, ICICI, Axis SMS and PhonePe/Paytm screenshots, anonymised into tests | 2, 3 |
+| 3 | **Smarter rules**: UPI ID prefix patterns; notes and tags | 4 |
+| 4 | **Loan schedule view**: the full amortisation table, floating-rate changes | 5 |
 | 5 | **Notification-listener mode (opt-in)**: read payment notifications from GPay, PhonePe and bank apps, with clear disclosure. Removes the share step and is allowed by Play with a proper declaration | 1 |
 | 6 | **Encrypted backup + FLAG_SECURE**: optional passphrase on the JSON backup; hide Tracks in recent apps when App lock is on | 9 |
 | 7 | **SQL aggregations** for reports and balances | 8 |
-| 8 | **Phase 3**: cash-flow forecast from bills (what's left on payday), savings goals, Money Manager Excel import, XLSX export | — |
+| 8 | **Phase 3**: savings goals, Money Manager Excel import, XLSX export | — |
 | 9 | **Phase 4**: home-screen quick-add widget, theme editor, a custom app icon, optional bundled fonts (needs your OK to add font files) | 10 |
 | 10 | **Release prep**: real signing key, Play listing, privacy policy (easy, since nothing is collected) | — |

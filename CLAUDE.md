@@ -124,13 +124,15 @@ input (shared SMS text | shared image | quick-add text | pasted text)
 - Optional encrypted backup to a user-chosen location (Drive/own server) — user-triggered only
 - Optional on-device LLM for messy inputs
 
-### Status (2026-10-23), see `docs/how-tracks-works.md`
+### Status (2026-10-24), see `docs/how-tracks-works.md`
 - **Phase 1 done:** quick-add, SMS and screenshot (on-device OCR) share, accounts,
   categories editor, Daily/Monthly/Yearly + calendar, search, backup/restore/CSV, app lock.
 - **Phase 2 done:** bills/autopay with notification reminders, budgets, credit cards
   (cycle, due, utilisation), loans and IOUs as accounts moved by transfers.
-- **Phase 3 started:** Reports tab. Next: rules learned from corrections, EMI interest split,
-  notification-listener capture, cash-flow forecast.
+- **Capture hardened:** real GPay/Canara/Kotak formats, SMS-thread screenshots → batch
+  review, own crash-proof share channel, parser fuzz tests, rules learned from corrections.
+- **Phase 3 started:** Reports tab, EMI principal/interest split. Next: cash-flow forecast,
+  notification-listener capture (opt-in), more bank fixtures.
 
 ---
 
