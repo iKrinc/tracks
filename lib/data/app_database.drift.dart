@@ -110,6 +110,28 @@ class $FundsTable extends Funds with TableInfo<$FundsTable, Fund> {
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _syncAccountIdMeta = const VerificationMeta(
+    'syncAccountId',
+  );
+  @override
+  late final GeneratedColumn<int> syncAccountId = GeneratedColumn<int>(
+    'sync_account_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _syncTransferIdMeta = const VerificationMeta(
+    'syncTransferId',
+  );
+  @override
+  late final GeneratedColumn<int> syncTransferId = GeneratedColumn<int>(
+    'sync_transfer_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -121,6 +143,8 @@ class $FundsTable extends Funds with TableInfo<$FundsTable, Fund> {
     archived,
     note,
     createdAt,
+    syncAccountId,
+    syncTransferId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -186,6 +210,24 @@ class $FundsTable extends Funds with TableInfo<$FundsTable, Fund> {
         createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
       );
     }
+    if (data.containsKey('sync_account_id')) {
+      context.handle(
+        _syncAccountIdMeta,
+        syncAccountId.isAcceptableOrUnknown(
+          data['sync_account_id']!,
+          _syncAccountIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('sync_transfer_id')) {
+      context.handle(
+        _syncTransferIdMeta,
+        syncTransferId.isAcceptableOrUnknown(
+          data['sync_transfer_id']!,
+          _syncTransferIdMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -233,6 +275,14 @@ class $FundsTable extends Funds with TableInfo<$FundsTable, Fund> {
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
       )!,
+      syncAccountId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sync_account_id'],
+      ),
+      syncTransferId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sync_transfer_id'],
+      ),
     );
   }
 
@@ -257,6 +307,11 @@ class Fund extends DataClass implements Insertable<Fund> {
   final bool archived;
   final String note;
   final DateTime createdAt;
+
+  /// When synced (mode merged), the main account its remaining money lands
+  /// in, and the "<Fund> – remaining" transfer that carries it (v7).
+  final int? syncAccountId;
+  final int? syncTransferId;
   const Fund({
     required this.id,
     required this.name,
@@ -267,6 +322,8 @@ class Fund extends DataClass implements Insertable<Fund> {
     required this.archived,
     required this.note,
     required this.createdAt,
+    this.syncAccountId,
+    this.syncTransferId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -284,6 +341,12 @@ class Fund extends DataClass implements Insertable<Fund> {
     map['archived'] = Variable<bool>(archived);
     map['note'] = Variable<String>(note);
     map['created_at'] = Variable<DateTime>(createdAt);
+    if (!nullToAbsent || syncAccountId != null) {
+      map['sync_account_id'] = Variable<int>(syncAccountId);
+    }
+    if (!nullToAbsent || syncTransferId != null) {
+      map['sync_transfer_id'] = Variable<int>(syncTransferId);
+    }
     return map;
   }
 
@@ -300,6 +363,12 @@ class Fund extends DataClass implements Insertable<Fund> {
       archived: Value(archived),
       note: Value(note),
       createdAt: Value(createdAt),
+      syncAccountId: syncAccountId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncAccountId),
+      syncTransferId: syncTransferId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(syncTransferId),
     );
   }
 
@@ -320,6 +389,8 @@ class Fund extends DataClass implements Insertable<Fund> {
       archived: serializer.fromJson<bool>(json['archived']),
       note: serializer.fromJson<String>(json['note']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      syncAccountId: serializer.fromJson<int?>(json['syncAccountId']),
+      syncTransferId: serializer.fromJson<int?>(json['syncTransferId']),
     );
   }
   @override
@@ -337,6 +408,8 @@ class Fund extends DataClass implements Insertable<Fund> {
       'archived': serializer.toJson<bool>(archived),
       'note': serializer.toJson<String>(note),
       'createdAt': serializer.toJson<DateTime>(createdAt),
+      'syncAccountId': serializer.toJson<int?>(syncAccountId),
+      'syncTransferId': serializer.toJson<int?>(syncTransferId),
     };
   }
 
@@ -350,6 +423,8 @@ class Fund extends DataClass implements Insertable<Fund> {
     bool? archived,
     String? note,
     DateTime? createdAt,
+    Value<int?> syncAccountId = const Value.absent(),
+    Value<int?> syncTransferId = const Value.absent(),
   }) => Fund(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -360,6 +435,12 @@ class Fund extends DataClass implements Insertable<Fund> {
     archived: archived ?? this.archived,
     note: note ?? this.note,
     createdAt: createdAt ?? this.createdAt,
+    syncAccountId: syncAccountId.present
+        ? syncAccountId.value
+        : this.syncAccountId,
+    syncTransferId: syncTransferId.present
+        ? syncTransferId.value
+        : this.syncTransferId,
   );
   Fund copyWithCompanion(FundsCompanion data) {
     return Fund(
@@ -374,6 +455,12 @@ class Fund extends DataClass implements Insertable<Fund> {
       archived: data.archived.present ? data.archived.value : this.archived,
       note: data.note.present ? data.note.value : this.note,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      syncAccountId: data.syncAccountId.present
+          ? data.syncAccountId.value
+          : this.syncAccountId,
+      syncTransferId: data.syncTransferId.present
+          ? data.syncTransferId.value
+          : this.syncTransferId,
     );
   }
 
@@ -388,7 +475,9 @@ class Fund extends DataClass implements Insertable<Fund> {
           ..write('mode: $mode, ')
           ..write('archived: $archived, ')
           ..write('note: $note, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('syncAccountId: $syncAccountId, ')
+          ..write('syncTransferId: $syncTransferId')
           ..write(')'))
         .toString();
   }
@@ -404,6 +493,8 @@ class Fund extends DataClass implements Insertable<Fund> {
     archived,
     note,
     createdAt,
+    syncAccountId,
+    syncTransferId,
   );
   @override
   bool operator ==(Object other) =>
@@ -417,7 +508,9 @@ class Fund extends DataClass implements Insertable<Fund> {
           other.mode == this.mode &&
           other.archived == this.archived &&
           other.note == this.note &&
-          other.createdAt == this.createdAt);
+          other.createdAt == this.createdAt &&
+          other.syncAccountId == this.syncAccountId &&
+          other.syncTransferId == this.syncTransferId);
 }
 
 class FundsCompanion extends UpdateCompanion<Fund> {
@@ -430,6 +523,8 @@ class FundsCompanion extends UpdateCompanion<Fund> {
   final Value<bool> archived;
   final Value<String> note;
   final Value<DateTime> createdAt;
+  final Value<int?> syncAccountId;
+  final Value<int?> syncTransferId;
   const FundsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -440,6 +535,8 @@ class FundsCompanion extends UpdateCompanion<Fund> {
     this.archived = const Value.absent(),
     this.note = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.syncAccountId = const Value.absent(),
+    this.syncTransferId = const Value.absent(),
   });
   FundsCompanion.insert({
     this.id = const Value.absent(),
@@ -451,6 +548,8 @@ class FundsCompanion extends UpdateCompanion<Fund> {
     this.archived = const Value.absent(),
     this.note = const Value.absent(),
     this.createdAt = const Value.absent(),
+    this.syncAccountId = const Value.absent(),
+    this.syncTransferId = const Value.absent(),
   }) : name = Value(name),
        color = Value(color);
   static Insertable<Fund> custom({
@@ -463,6 +562,8 @@ class FundsCompanion extends UpdateCompanion<Fund> {
     Expression<bool>? archived,
     Expression<String>? note,
     Expression<DateTime>? createdAt,
+    Expression<int>? syncAccountId,
+    Expression<int>? syncTransferId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -474,6 +575,8 @@ class FundsCompanion extends UpdateCompanion<Fund> {
       if (archived != null) 'archived': archived,
       if (note != null) 'note': note,
       if (createdAt != null) 'created_at': createdAt,
+      if (syncAccountId != null) 'sync_account_id': syncAccountId,
+      if (syncTransferId != null) 'sync_transfer_id': syncTransferId,
     });
   }
 
@@ -487,6 +590,8 @@ class FundsCompanion extends UpdateCompanion<Fund> {
     Value<bool>? archived,
     Value<String>? note,
     Value<DateTime>? createdAt,
+    Value<int?>? syncAccountId,
+    Value<int?>? syncTransferId,
   }) {
     return FundsCompanion(
       id: id ?? this.id,
@@ -498,6 +603,8 @@ class FundsCompanion extends UpdateCompanion<Fund> {
       archived: archived ?? this.archived,
       note: note ?? this.note,
       createdAt: createdAt ?? this.createdAt,
+      syncAccountId: syncAccountId ?? this.syncAccountId,
+      syncTransferId: syncTransferId ?? this.syncTransferId,
     );
   }
 
@@ -533,6 +640,12 @@ class FundsCompanion extends UpdateCompanion<Fund> {
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
+    if (syncAccountId.present) {
+      map['sync_account_id'] = Variable<int>(syncAccountId.value);
+    }
+    if (syncTransferId.present) {
+      map['sync_transfer_id'] = Variable<int>(syncTransferId.value);
+    }
     return map;
   }
 
@@ -547,7 +660,9 @@ class FundsCompanion extends UpdateCompanion<Fund> {
           ..write('mode: $mode, ')
           ..write('archived: $archived, ')
           ..write('note: $note, ')
-          ..write('createdAt: $createdAt')
+          ..write('createdAt: $createdAt, ')
+          ..write('syncAccountId: $syncAccountId, ')
+          ..write('syncTransferId: $syncTransferId')
           ..write(')'))
         .toString();
   }
@@ -5136,6 +5251,8 @@ typedef $$FundsTableCreateCompanionBuilder = FundsCompanion Function({
   Value<bool> archived,
   Value<String> note,
   Value<DateTime> createdAt,
+  Value<int?> syncAccountId,
+  Value<int?> syncTransferId,
 });
 typedef $$FundsTableUpdateCompanionBuilder = FundsCompanion Function({
   Value<int> id,
@@ -5147,6 +5264,8 @@ typedef $$FundsTableUpdateCompanionBuilder = FundsCompanion Function({
   Value<bool> archived,
   Value<String> note,
   Value<DateTime> createdAt,
+  Value<int?> syncAccountId,
+  Value<int?> syncTransferId,
 });
 
 final class $$FundsTableReferences
@@ -5242,6 +5361,16 @@ class $$FundsTableFilterComposer extends Composer<_$AppDatabase, $FundsTable> {
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get syncAccountId => $composableBuilder(
+    column: $table.syncAccountId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get syncTransferId => $composableBuilder(
+    column: $table.syncTransferId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5349,6 +5478,16 @@ class $$FundsTableOrderingComposer
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get syncAccountId => $composableBuilder(
+    column: $table.syncAccountId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get syncTransferId => $composableBuilder(
+    column: $table.syncTransferId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$FundsTableAnnotationComposer
@@ -5388,6 +5527,16 @@ class $$FundsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<int> get syncAccountId => $composableBuilder(
+    column: $table.syncAccountId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get syncTransferId => $composableBuilder(
+    column: $table.syncTransferId,
+    builder: (column) => column,
+  );
 
   Expression<T> accountsRefs<T extends Object>(
     Expression<T> Function($$AccountsTableAnnotationComposer a) f,
@@ -5477,6 +5626,8 @@ class $$FundsTableTableManager
                 Value<bool> archived = const Value.absent(),
                 Value<String> note = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<int?> syncAccountId = const Value.absent(),
+                Value<int?> syncTransferId = const Value.absent(),
               }) => FundsCompanion(
                 id: id,
                 name: name,
@@ -5487,6 +5638,8 @@ class $$FundsTableTableManager
                 archived: archived,
                 note: note,
                 createdAt: createdAt,
+                syncAccountId: syncAccountId,
+                syncTransferId: syncTransferId,
               ),
           createCompanionCallback:
               ({
@@ -5499,6 +5652,8 @@ class $$FundsTableTableManager
                 Value<bool> archived = const Value.absent(),
                 Value<String> note = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
+                Value<int?> syncAccountId = const Value.absent(),
+                Value<int?> syncTransferId = const Value.absent(),
               }) => FundsCompanion.insert(
                 id: id,
                 name: name,
@@ -5509,6 +5664,8 @@ class $$FundsTableTableManager
                 archived: archived,
                 note: note,
                 createdAt: createdAt,
+                syncAccountId: syncAccountId,
+                syncTransferId: syncTransferId,
               ),
           withReferenceMapper: (p0) => p0
               .map(
