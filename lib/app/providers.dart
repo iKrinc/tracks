@@ -1,4 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:tracks/app/appearance.dart';
 import 'package:tracks/core/dates.dart';
 import 'package:tracks/data/app_database.dart';
 import 'package:tracks/features/accounts/domain/balances.dart';
@@ -131,6 +132,18 @@ Map<int, int> balances(Ref ref) {
 Stream<String?> setting(Ref ref, String key) =>
     ref.watch(appDatabaseProvider).watchSetting(key);
 
+/// Theme choices from More → Appearance; defaults until settings load.
+@riverpod
+Appearance appearance(Ref ref) => Appearance.fromSettings({
+  for (final k in [
+    Appearance.modeKey,
+    Appearance.accentKey,
+    Appearance.textKey,
+    Appearance.compactKey,
+  ])
+    k: ?ref.watch(settingProvider(k)).value,
+});
+
 /// How the Transactions tab groups things.
 enum PeriodView { daily, monthly, yearly }
 
@@ -142,7 +155,7 @@ class ViewMode extends _$ViewMode {
   void set(PeriodView v) => state = v;
 }
 
-/// All transactions as plain records, for period totals and reports.
+/// Main-flow money as daily sums, for period totals and reports.
 @riverpod
 Stream<List<DatedTxn>> allDatedTxns(Ref ref) {
   final separate = ref.watch(separateFundAccountsProvider);
@@ -151,21 +164,31 @@ Stream<List<DatedTxn>> allDatedTxns(Ref ref) {
     for (final a in ref.watch(allAccountsProvider).value ?? const <Account>[])
       if (a.fundId != null) a.id: a.fundId!,
   };
+  // Daily sums from SQL, not every row: same totals, far less work.
   return ref
       .watch(appDatabaseProvider)
-      .watchAllTransactions()
+      .watchDailyTotals()
       .map(
         (rows) => [
-          for (final t in mainOnly(rows, separate))
-            (
-              type: t.type,
-              amountPaise: t.amountPaise,
-              occurredAt: t.occurredAt,
-              categoryId:
-                  t.type != TxnType.transfer && fundOf[t.accountId] != null
-                  ? fundCategoryId(fundOf[t.accountId]!)
-                  : t.categoryId,
-            ),
+          for (final t in rows)
+            if (separate.isEmpty ||
+                countsInMain((
+                  type: t.type,
+                  accountId: t.accountId,
+                  toAccountId: t.toAccountId,
+                  fundId: null,
+                  paise: t.amountPaise,
+                  categoryId: t.categoryId,
+                ), separate))
+              (
+                type: t.type,
+                amountPaise: t.amountPaise,
+                occurredAt: t.occurredAt,
+                categoryId:
+                    t.type != TxnType.transfer && fundOf[t.accountId] != null
+                    ? fundCategoryId(fundOf[t.accountId]!)
+                    : t.categoryId,
+              ),
         ],
       );
 }
@@ -402,4 +425,17 @@ CashForecast? cashForecast(Ref ref) {
       liquidAccounts: liquid,
     ),
   );
+}
+
+/// What the home-screen widget asked for. Each tap is a new request (the
+/// counter changes), so Home reacts even to the same kind twice.
+typedef QuickAddRequest = ({int n, bool form});
+
+@Riverpod(keepAlive: true)
+class QuickAddRequests extends _$QuickAddRequests {
+  @override
+  QuickAddRequest? build() => null;
+
+  void ask({required bool form}) =>
+      state = (n: (state?.n ?? 0) + 1, form: form);
 }

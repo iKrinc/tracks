@@ -67,6 +67,12 @@ class MoreScreen extends ConsumerWidget {
             subtitle: const Text('What Tracks learned from your corrections'),
             onTap: () => context.push('/rules'),
           ),
+          ListTile(
+            leading: const Icon(Icons.palette_outlined),
+            title: const Text('Appearance'),
+            subtitle: const Text('Light or dark, colour, text size'),
+            onTap: () => context.push('/appearance'),
+          ),
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 16, 20, 4),
             child: Text('Your data', style: theme.textTheme.titleSmall),

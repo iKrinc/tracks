@@ -644,11 +644,31 @@ class _QuickAddBar extends ConsumerStatefulWidget {
 
 class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
   final _ctl = TextEditingController();
+  final _focus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    // A widget tap that opened the app before Home was built.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final r = ref.read(quickAddRequestsProvider);
+      if (r != null && mounted) _answer(r);
+    });
+  }
 
   @override
   void dispose() {
     _ctl.dispose();
+    _focus.dispose();
     super.dispose();
+  }
+
+  void _answer(QuickAddRequest r) {
+    if (r.form) {
+      showConfirmSheet(context);
+    } else {
+      _focus.requestFocus();
+    }
   }
 
   Future<void> _submit() async {
@@ -671,6 +691,9 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(quickAddRequestsProvider, (_, r) {
+      if (r != null) _answer(r);
+    });
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
       child: Row(
@@ -684,6 +707,7 @@ class _QuickAddBarState extends ConsumerState<_QuickAddBar> {
           Expanded(
             child: TextField(
               controller: _ctl,
+              focusNode: _focus,
               textInputAction: TextInputAction.done,
               onSubmitted: (_) => _submit(),
               decoration: InputDecoration(

@@ -8,6 +8,7 @@ import 'package:tracks/features/funds/presentation/fund_screen.dart';
 import 'package:tracks/features/funds/presentation/funds_screen.dart';
 import 'package:tracks/features/insights/presentation/reports_screen.dart';
 import 'package:tracks/features/recurring/presentation/recurring_screen.dart';
+import 'package:tracks/features/settings/presentation/appearance_screen.dart';
 import 'package:tracks/features/settings/presentation/categories_screen.dart';
 import 'package:tracks/features/settings/presentation/more_screen.dart';
 import 'package:tracks/features/settings/presentation/welcome_screen.dart';
@@ -61,6 +62,7 @@ final appRouter = GoRouter(
     GoRoute(path: '/bills', builder: (_, _) => const RecurringScreen()),
     GoRoute(path: '/categories', builder: (_, _) => const CategoriesScreen()),
     GoRoute(path: '/rules', builder: (_, _) => const RulesScreen()),
+    GoRoute(path: '/appearance', builder: (_, _) => const AppearanceScreen()),
     GoRoute(
       path: '/funds/:id',
       builder: (_, state) =>

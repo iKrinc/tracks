@@ -7,6 +7,16 @@ export 'package:tracks/data/tables.dart';
 
 part 'app_database.drift.dart';
 
+/// A transaction as period totals and reports read it.
+typedef ReportRow = ({
+  TxnType type,
+  int amountPaise,
+  DateTime occurredAt,
+  int? categoryId,
+  int accountId,
+  int? toAccountId,
+});
+
 @DriftDatabase(
   tables: [
     Funds,
@@ -240,6 +250,30 @@ class AppDatabase extends _$AppDatabase {
           .watch();
 
   /// Every transaction, for yearly views and reports.
+  /// Sums per local day, type, category and account(s). Every period
+  /// total, category slice and daily pace line is a sum of these, so Home
+  /// and Reports read a few thousand rows instead of every transaction.
+  Stream<List<ReportRow>> watchDailyTotals() =>
+      customSelect(
+        "SELECT date(occurred_at, 'unixepoch', 'localtime') AS day, type, "
+        'category_id, account_id, to_account_id, SUM(amount_paise) AS total '
+        'FROM transactions '
+        'GROUP BY day, type, category_id, account_id, to_account_id',
+        readsFrom: {transactions},
+      ).watch().map(
+        (rows) => [
+          for (final r in rows)
+            (
+              type: TxnType.values.byName(r.read<String>('type')),
+              amountPaise: r.read<int>('total'),
+              occurredAt: DateTime.parse(r.read<String>('day')),
+              categoryId: r.readNullable<int>('category_id'),
+              accountId: r.read<int>('account_id'),
+              toAccountId: r.readNullable<int>('to_account_id'),
+            ),
+        ],
+      );
+
   Stream<List<Transaction>> watchAllTransactions() => (select(
     transactions,
   )..orderBy([(t) => OrderingTerm.desc(t.occurredAt)])).watch();

@@ -309,7 +309,7 @@ class Fund extends DataClass implements Insertable<Fund> {
   final DateTime createdAt;
 
   /// When synced (mode merged), the main account its remaining money lands
-  /// in, and the "<Fund> – remaining" transfer that carries it (v7).
+  /// in, and the "Marriage – remaining" transfer that carries it (v7).
   final int? syncAccountId;
   final int? syncTransferId;
   const Fund({

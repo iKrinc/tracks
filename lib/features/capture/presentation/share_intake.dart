@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:tracks/app/providers.dart';
 import 'package:tracks/data/app_database.dart';
 import 'package:tracks/features/backup/presentation/backup_actions.dart';
@@ -94,6 +95,12 @@ class _ShareIntakeState extends ConsumerState<ShareIntake> {
   }
 
   Future<void> _handle(SharedPayload p) async {
+    if (p.open != null) {
+      // From the home-screen widget: go Home, then focus or open the form.
+      GoRouter.of(context).go('/');
+      ref.read(quickAddRequestsProvider.notifier).ask(form: p.open == 'form');
+      return;
+    }
     if (p.error != null && p.files.isEmpty && (p.text ?? '').trim().isEmpty) {
       _say("Couldn't open what was shared");
       return;

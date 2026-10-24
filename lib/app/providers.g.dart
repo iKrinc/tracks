@@ -581,6 +581,52 @@ final class SettingFamily extends $Family
   String toString() => r'settingProvider';
 }
 
+/// Theme choices from More → Appearance; defaults until settings load.
+
+@ProviderFor(appearance)
+final appearanceProvider = AppearanceProvider._();
+
+/// Theme choices from More → Appearance; defaults until settings load.
+
+final class AppearanceProvider
+    extends $FunctionalProvider<Appearance, Appearance, Appearance>
+    with $Provider<Appearance> {
+  /// Theme choices from More → Appearance; defaults until settings load.
+  AppearanceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'appearanceProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$appearanceHash();
+
+  @$internal
+  @override
+  $ProviderElement<Appearance> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  Appearance create(Ref ref) {
+    return appearance(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Appearance value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Appearance>(value),
+    );
+  }
+}
+
+String _$appearanceHash() => r'e739b0e4ae3663df9cc83abd2fd179bb9799cbe9';
+
 @ProviderFor(ViewMode)
 final viewModeProvider = ViewModeProvider._();
 
@@ -632,12 +678,12 @@ abstract class _$ViewMode extends $Notifier<PeriodView> {
   }
 }
 
-/// All transactions as plain records, for period totals and reports.
+/// Main-flow money as daily sums, for period totals and reports.
 
 @ProviderFor(allDatedTxns)
 final allDatedTxnsProvider = AllDatedTxnsProvider._();
 
-/// All transactions as plain records, for period totals and reports.
+/// Main-flow money as daily sums, for period totals and reports.
 
 final class AllDatedTxnsProvider
     extends
@@ -647,7 +693,7 @@ final class AllDatedTxnsProvider
           Stream<List<DatedTxn>>
         >
     with $FutureModifier<List<DatedTxn>>, $StreamProvider<List<DatedTxn>> {
-  /// All transactions as plain records, for period totals and reports.
+  /// Main-flow money as daily sums, for period totals and reports.
   AllDatedTxnsProvider._()
     : super(
         from: null,
@@ -674,7 +720,7 @@ final class AllDatedTxnsProvider
   }
 }
 
-String _$allDatedTxnsHash() => r'7a34d19905dada0ee6cdec44617674d0148d4901';
+String _$allDatedTxnsHash() => r'f8ecf1f8448fe365db1476b7f69b005d6a2ed964';
 
 /// Category id → parent id, for rolling subcategories up.
 
@@ -1129,3 +1175,55 @@ final class CashForecastProvider
 }
 
 String _$cashForecastHash() => r'de13bd4e638758dbf5a233a4593ee20659090c99';
+
+@ProviderFor(QuickAddRequests)
+final quickAddRequestsProvider = QuickAddRequestsProvider._();
+
+final class QuickAddRequestsProvider
+    extends $NotifierProvider<QuickAddRequests, QuickAddRequest?> {
+  QuickAddRequestsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'quickAddRequestsProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$quickAddRequestsHash();
+
+  @$internal
+  @override
+  QuickAddRequests create() => QuickAddRequests();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(QuickAddRequest? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<QuickAddRequest?>(value),
+    );
+  }
+}
+
+String _$quickAddRequestsHash() => r'c2b982a5cb301ea92dbb060976db10c23100180d';
+
+abstract class _$QuickAddRequests extends $Notifier<QuickAddRequest?> {
+  QuickAddRequest? build();
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<QuickAddRequest?, QuickAddRequest?>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<QuickAddRequest?, QuickAddRequest?>,
+              QuickAddRequest?,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, build);
+  }
+}

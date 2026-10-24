@@ -8,13 +8,21 @@ typedef SharedFile = ({String path, String? mime, String name});
 
 /// Something shared into Tracks from the Android share sheet.
 class SharedPayload {
-  const SharedPayload({this.text, this.files = const [], this.error});
+  const SharedPayload({
+    this.text,
+    this.files = const [],
+    this.error,
+    this.open,
+  });
 
   final String? text;
   final List<SharedFile> files;
 
   /// Set when the sharing app handed over something unreadable.
   final String? error;
+
+  /// From the home-screen widget: "quickAdd" or "form".
+  final String? open;
 
   /// Reads the map MainActivity sends; anything malformed becomes an
   /// error payload rather than a crash.
@@ -33,6 +41,7 @@ class SharedPayload {
               ),
         ],
         error: m['error'] as String?,
+        open: m['open'] as String?,
       );
     } catch (e) {
       return SharedPayload(error: '$e');

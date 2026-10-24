@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tracks/app/appearance.dart';
 
 /// "Marigold & chai": warm paper, marigold-to-coral heroes, espresso ink.
 /// Owner moved away from the blue/purple pastels on 2026-10-23. Every pair
@@ -97,7 +98,7 @@ class TracksTokens extends ThemeExtension<TracksTokens> {
   }
 }
 
-ColorScheme _scheme(Brightness b) {
+ColorScheme _scheme(Brightness b, HeroAccent accent) {
   final seeded = ColorScheme.fromSeed(
     seedColor: const Color(0xFFB07A2A),
     brightness: b,
@@ -106,7 +107,7 @@ ColorScheme _scheme(Brightness b) {
     return seeded.copyWith(
       primary: const Color(0xFF2B2118),
       onPrimary: const Color(0xFFFBF6EC),
-      primaryContainer: Palette.marigoldSoft,
+      primaryContainer: accent.soft,
       onPrimaryContainer: const Color(0xFF3A2A10),
       secondary: const Color(0xFF6B5532),
       secondaryContainer: Palette.sand,
@@ -154,9 +155,13 @@ ColorScheme _scheme(Brightness b) {
   );
 }
 
-ThemeData buildTheme(Brightness brightness) {
+ThemeData buildTheme(
+  Brightness brightness, {
+  HeroAccent accent = HeroAccent.marigold,
+  bool compact = false,
+}) {
   final light = brightness == Brightness.light;
-  final scheme = _scheme(brightness);
+  final scheme = _scheme(brightness, accent);
   final base = ThemeData(colorScheme: scheme, useMaterial3: true);
   // Figures are the hero of the app: tighter tracking, heavier weight.
   final text = base.textTheme.copyWith(
@@ -257,7 +262,7 @@ ThemeData buildTheme(Brightness brightness) {
     ),
     extensions: [
       TracksTokens(
-        heroGradient: light ? Palette.heroLight : Palette.heroDark,
+        heroGradient: light ? accent.light : accent.dark,
         heroInk: light ? Palette.heroInkLight : Palette.heroInkDark,
         heroMuted: light ? Palette.heroMutedLight : Palette.heroMutedDark,
         heroTrack: light
@@ -270,7 +275,7 @@ ThemeData buildTheme(Brightness brightness) {
         seriesB: light ? const Color(0xFFD4672A) : const Color(0xFFD9692C),
       ),
     ],
-    visualDensity: VisualDensity.standard,
+    visualDensity: compact ? VisualDensity.compact : VisualDensity.standard,
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: scheme.surfaceContainer,
