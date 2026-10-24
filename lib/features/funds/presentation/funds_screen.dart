@@ -44,14 +44,23 @@ FundView fundViewOf(
       if (a.fundId == f.id) a,
   ];
   final ids = {for (final a in accounts) a.id};
+  // A synced fund's "remaining" transfer is how main sees it, not part of
+  // the fund's own story: what's left is counted before it.
+  final sync = txns.where((t) => t.id == f.syncTransferId).firstOrNull;
+  final carried = sync == null
+      ? 0
+      : (ids.contains(sync.accountId) ? sync.amountPaise : -sync.amountPaise);
   return (
     fund: f,
     accounts: accounts,
     summary: summarizeFund(
       fundId: f.id,
       fundAccounts: ids,
-      txns: txns.map(fundTxnOf),
-      inFundPaise: ids.fold(0, (s, id) => s + (balances[id] ?? 0)),
+      txns: [
+        for (final t in txns)
+          if (t.id != f.syncTransferId) fundTxnOf(t),
+      ],
+      inFundPaise: ids.fold(0, (s, id) => s + (balances[id] ?? 0)) + carried,
       budgetPaise: f.budgetPaise,
     ),
   );
@@ -243,6 +252,9 @@ class _NewFundSheetState extends ConsumerState<_NewFundSheet> {
   final _budget = TextEditingController();
   final _start = TextEditingController();
   String _icon = fundIcons.first.$1;
+
+  /// Where the starting money comes from; null = new money typed in.
+  int? _from;
   String? _error;
 
   @override
@@ -276,6 +288,7 @@ class _NewFundSheetState extends ConsumerState<_NewFundSheet> {
       icon: _icon,
       budgetPaise: budget,
       startPaise: start ?? 0,
+      startFromAccountId: _from,
     );
     if (!mounted) return;
     Navigator.pop(context);
@@ -340,15 +353,47 @@ class _NewFundSheetState extends ConsumerState<_NewFundSheet> {
               ),
               decoration: const InputDecoration(
                 prefixText: '₹ ',
-                labelText: 'Already set aside (optional)',
-                hintText: '2,00,000',
+                labelText: 'Starting money (optional)',
+                hintText: '5,00,000',
               ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(4, 12, 4, 6),
+              child: Text('Comes from', style: theme.textTheme.labelLarge),
+            ),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                ChoiceChip(
+                  avatar: const Icon(Icons.add_circle_outline, size: 18),
+                  label: const Text('New money'),
+                  tooltip: 'Gifts, savings elsewhere, an FD',
+                  selected: _from == null,
+                  onSelected: (_) => setState(() => _from = null),
+                ),
+                for (final a in [
+                  for (final a
+                      in ref.watch(accountsProvider).value ?? const <Account>[])
+                    if (a.fundId == null &&
+                        spendableAccountTypes.contains(a.type))
+                      a,
+                ])
+                  ChoiceChip(
+                    avatar: Icon(iconFor(a.icon), size: 18),
+                    label: Text(a.name),
+                    selected: _from == a.id,
+                    onSelected: (_) => setState(() => _from = a.id),
+                  ),
+              ],
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 6, 12, 0),
               child: Text(
-                'Money already kept for this, e.g. in an FD. To move money '
-                'from your accounts, use "Add money" on the fund.',
+                _from == null
+                    ? 'Money that was never in your accounts here.'
+                    : 'Moved out of that account as "initial", so its '
+                          'balance stays true.',
                 style: theme.textTheme.bodySmall,
               ),
             ),

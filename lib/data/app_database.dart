@@ -381,7 +381,7 @@ class AppDatabase extends _$AppDatabase {
 
   /// Syncs fund [fundId] into main account [toAccountId]: its entries show
   /// in the main timeline on their own dates, and what's left moves into
-  /// that account as "<Fund> – remaining", right after the last entry.
+  /// that account as "Marriage – remaining", right after the last entry.
   Future<void> syncFund(int fundId, {required int toAccountId}) =>
       transaction(() async {
         await (update(funds)..where((f) => f.id.equals(fundId))).write(

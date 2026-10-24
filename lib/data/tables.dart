@@ -45,7 +45,7 @@ class Funds extends Table {
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
   /// When synced (mode merged), the main account its remaining money lands
-  /// in, and the "<Fund> – remaining" transfer that carries it (v7).
+  /// in, and the "Marriage – remaining" transfer that carries it (v7).
   IntColumn get syncAccountId => integer().nullable()();
   IntColumn get syncTransferId => integer().nullable()();
 }

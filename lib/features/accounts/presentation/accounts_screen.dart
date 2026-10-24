@@ -128,7 +128,7 @@ class AccountsScreen extends ConsumerWidget {
                   ),
                   if (separate.isNotEmpty)
                     TextButton(
-                      onPressed: () => context.push('/funds'),
+                      onPressed: () => context.go('/funds'),
                       child: Text(
                         '+ ${formatPaise(keptApart)} kept in funds',
                         style: const TextStyle(
@@ -158,7 +158,7 @@ class AccountsScreen extends ConsumerWidget {
                 subtitle: Text(
                   separate.contains(a.id)
                       ? '${fundNames[a.fundId] ?? 'Fund'} · kept separate'
-                      : '${fundNames[a.fundId] ?? 'Fund'} · counts in main',
+                      : '${fundNames[a.fundId] ?? 'Fund'} · synced',
                 ),
                 trailing: Text(
                   formatPaise(balances[a.id] ?? 0),

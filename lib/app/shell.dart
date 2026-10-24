@@ -98,6 +98,11 @@ class _AppShellState extends ConsumerState<AppShell> {
               label: 'Reports',
             ),
             NavigationDestination(
+              icon: Icon(Icons.celebration_outlined),
+              selectedIcon: Icon(Icons.celebration),
+              label: 'Funds',
+            ),
+            NavigationDestination(
               icon: Icon(Icons.account_balance_wallet_outlined),
               selectedIcon: Icon(Icons.account_balance_wallet),
               label: 'Accounts',

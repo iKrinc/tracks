@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:tracks/app/icons.dart';
 import 'package:tracks/app/providers.dart';
 import 'package:tracks/app/theme.dart';
+import 'package:tracks/app/widgets/confirm.dart';
 import 'package:tracks/app/widgets/hero.dart';
 import 'package:tracks/app/widgets/meter.dart';
 import 'package:tracks/core/money.dart';
@@ -39,7 +40,9 @@ class FundScreen extends ConsumerWidget {
     final ids = {for (final a in view.accounts) a.id};
     final mine = [
       for (final t in txns)
-        if (belongsToFund(fundTxnOf(t), fund.id, ids)) t,
+        if (t.id != fund.syncTransferId &&
+            belongsToFund(fundTxnOf(t), fund.id, ids))
+          t,
     ];
     final pot = view.accounts.where((a) => !a.archived).firstOrNull;
     final mainAccounts = [
@@ -47,6 +50,9 @@ class FundScreen extends ConsumerWidget {
         if (a.fundId == null && spendableAccountTypes.contains(a.type)) a,
     ];
     final separate = fund.mode == FundMode.separate;
+    final syncAccount = accounts
+        .where((a) => a.id == fund.syncAccountId)
+        .firstOrNull;
 
     Future<void> capture(CaptureDraft d) => showConfirmSheet(context, draft: d);
 
@@ -139,24 +145,24 @@ class FundScreen extends ConsumerWidget {
                   SwitchListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 4),
                     isThreeLine: true,
-                    value: separate,
-                    title: const Text('Keep separate from my main money'),
+                    value: !separate,
+                    title: Text(
+                      separate
+                          ? 'Sync to my main money'
+                          : 'Synced to ${syncAccount?.name ?? 'main'}',
+                    ),
                     subtitle: Text(
                       separate
-                          ? 'Tracked only here. Nothing shows in Home, '
+                          ? 'Off: tracked only here. Nothing shows in Home, '
                                 'Reports, budgets or net worth.'
-                          : 'Also in Home and Reports, as "${fund.name} – '
-                                'catering". Switch back any time.',
+                          : 'Its entries show in your timeline on their own '
+                                'dates, as "${fund.name} – …". What\'s left '
+                                'is in ${syncAccount?.name ?? 'that account'} '
+                                'as "${fund.name} – remaining".',
                     ),
-                    onChanged: (v) => ref
-                        .read(appDatabaseProvider)
-                        .saveFund(
-                          fund
-                              .copyWith(
-                                mode: v ? FundMode.separate : FundMode.merged,
-                              )
-                              .toCompanion(true),
-                        ),
+                    onChanged: (on) => on
+                        ? _sync(context, ref, fund, mainAccounts)
+                        : ref.read(appDatabaseProvider).unsyncFund(fund.id),
                   ),
                 if (!fund.archived && pot != null) ...[
                   const SizedBox(height: 8),
@@ -226,6 +232,60 @@ class FundScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  /// Asks which main account the fund syncs into, then syncs.
+  Future<void> _sync(
+    BuildContext context,
+    WidgetRef ref,
+    Fund fund,
+    List<Account> main,
+  ) async {
+    final target = await showModalBottomSheet<Account>(
+      context: context,
+      useRootNavigator: true,
+      showDragHandle: true,
+      useSafeArea: true,
+      builder: (context) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'Sync ${fund.name} to',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              main.isEmpty
+                  ? 'Add a cash, bank or wallet account first.'
+                  : 'Its entries join your timeline on their own dates. '
+                        'What\'s left goes into this account as '
+                        '"${fund.name} – remaining". Turn sync off any time '
+                        'to undo it.',
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final a in main)
+                  ActionChip(
+                    avatar: Icon(iconFor(a.icon), size: 18),
+                    label: Text(a.name),
+                    onPressed: () => Navigator.pop(context, a),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+    if (target == null) return;
+    await ref
+        .read(appDatabaseProvider)
+        .syncFund(fund.id, toAccountId: target.id);
   }
 
   Future<void> _editBudget(BuildContext context, Fund fund) =>
@@ -306,7 +366,18 @@ class FundScreen extends ConsumerWidget {
         ),
       ),
     );
-    if (target == null) return;
+    if (target == null || !context.mounted) return;
+    if (!await confirmDestructive(
+      context,
+      title: 'Close ${fund.name}?',
+      message: moveLeft
+          ? '${formatPaise(left)} moves to ${target.name}. Its history '
+                'stays under Closed.'
+          : 'Its history stays under Closed.',
+      action: 'Close fund',
+    )) {
+      return;
+    }
     final db = ref.read(appDatabaseProvider);
     final moved = await db.closeFund(
       fund.id,
