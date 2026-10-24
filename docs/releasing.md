@@ -10,9 +10,12 @@ newest one without changing the page.
 - Keystore: `C:\Users\krish\.tracks-signing\tracks-release.jks`, alias
   `tracks`. Its passwords are in `key.properties` next to it, copied to
   `android/key.properties` (gitignored).
-- **Back up that folder** (e.g. to your own Drive). If the key is lost,
-  installed copies can't be updated: people would have to uninstall
-  (losing data unless backed up) and reinstall.
+- **Backed up** to the owner's Google Drive, private, folder "Tracks signing
+  key", file `tracks-signing-key.zip` (the .jks plus key.properties). On a new
+  PC, unzip it into `C:\Users\<you>\.tracks-signing\`, copy key.properties
+  to `android/key.properties`, and fix its `storeFile` path. If the key were
+  lost, installed copies couldn't be updated: people would have to
+  uninstall (losing data unless backed up) and reinstall.
 - Certificate SHA-256: `ca7143b8e365a457ffda4183684814c4601a39908ac028497c0b83540fee7cba`
   (shown on the download page).
 - Without `key.properties` (another machine), release builds fall back to
