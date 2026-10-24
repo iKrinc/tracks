@@ -8,6 +8,7 @@ import 'package:tracks/core/dates.dart';
 import 'package:tracks/core/money.dart';
 import 'package:tracks/data/app_database.dart';
 import 'package:tracks/features/budgets/domain/budget_math.dart';
+import 'package:tracks/features/insights/presentation/forecast_sheet.dart';
 import 'package:tracks/features/capture/domain/capture_draft.dart';
 import 'package:tracks/features/capture/presentation/confirm_sheet.dart';
 import 'package:tracks/features/capture/presentation/share_intake.dart';
@@ -447,7 +448,8 @@ class PeriodRow extends StatelessWidget {
   }
 }
 
-/// Bills due soon and budgets running hot, for the current month only.
+/// The payday forecast, bills due soon and budgets running hot, for the
+/// current month only.
 class _HeadsUp extends ConsumerWidget {
   const _HeadsUp();
 
@@ -466,7 +468,7 @@ class _HeadsUp extends ConsumerWidget {
         .where((v) => v.progress.level != BudgetLevel.ok)
         .take(2)
         .toList();
-    if (due.isEmpty && hot.isEmpty) return const SizedBox.shrink();
+    if (due.isEmpty && hot.isEmpty) return const ForecastTile();
     final names = {
       for (final c
           in ref.watch(categoriesProvider(CategoryKind.expense)).value ??
@@ -488,6 +490,7 @@ class _HeadsUp extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const ForecastTile(),
           for (final v in hot)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),

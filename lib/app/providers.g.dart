@@ -340,7 +340,92 @@ final class MonthTransactionsProvider
   }
 }
 
-String _$monthTransactionsHash() => r'2fa5aec86ea57ca6f6f47d975c63ce7609df085d';
+String _$monthTransactionsHash() => r'890e920840fc6f30d11ee3019908578cb712e262';
+
+@ProviderFor(funds)
+final fundsProvider = FundsProvider._();
+
+final class FundsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Fund>>,
+          List<Fund>,
+          Stream<List<Fund>>
+        >
+    with $FutureModifier<List<Fund>>, $StreamProvider<List<Fund>> {
+  FundsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'fundsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$fundsHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<List<Fund>> $createElement($ProviderPointer pointer) =>
+      $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<Fund>> create(Ref ref) {
+    return funds(ref);
+  }
+}
+
+String _$fundsHash() => r'87af48840c0c8d9f5f93cd62b08d2278558d4d07';
+
+/// Accounts of funds kept separate; their money stays out of main views.
+
+@ProviderFor(separateFundAccounts)
+final separateFundAccountsProvider = SeparateFundAccountsProvider._();
+
+/// Accounts of funds kept separate; their money stays out of main views.
+
+final class SeparateFundAccountsProvider
+    extends $FunctionalProvider<Set<int>, Set<int>, Set<int>>
+    with $Provider<Set<int>> {
+  /// Accounts of funds kept separate; their money stays out of main views.
+  SeparateFundAccountsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'separateFundAccountsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$separateFundAccountsHash();
+
+  @$internal
+  @override
+  $ProviderElement<Set<int>> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  Set<int> create(Ref ref) {
+    return separateFundAccounts(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(Set<int> value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<Set<int>>(value),
+    );
+  }
+}
+
+String _$separateFundAccountsHash() =>
+    r'68b270c7b91af8527fad8fa9c159cc8d3cb337bc';
 
 @ProviderFor(txnTotals)
 final txnTotalsProvider = TxnTotalsProvider._();
@@ -589,7 +674,7 @@ final class AllDatedTxnsProvider
   }
 }
 
-String _$allDatedTxnsHash() => r'79a59e3d8f54476678f587a5fc2f96ca1b0b376b';
+String _$allDatedTxnsHash() => r'1134089581e6cbf34d6404026df50a65971d1043';
 
 /// Category id → parent id, for rolling subcategories up.
 
@@ -946,3 +1031,101 @@ final class AccountTxnsFamily extends $Family
   @override
   String toString() => r'accountTxnsProvider';
 }
+
+/// Every transaction, newest first.
+
+@ProviderFor(allTransactions)
+final allTransactionsProvider = AllTransactionsProvider._();
+
+/// Every transaction, newest first.
+
+final class AllTransactionsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Transaction>>,
+          List<Transaction>,
+          Stream<List<Transaction>>
+        >
+    with
+        $FutureModifier<List<Transaction>>,
+        $StreamProvider<List<Transaction>> {
+  /// Every transaction, newest first.
+  AllTransactionsProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'allTransactionsProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$allTransactionsHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<List<Transaction>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<Transaction>> create(Ref ref) {
+    return allTransactions(ref);
+  }
+}
+
+String _$allTransactionsHash() => r'ec3d04d45798be82bc6202e99593144b4c931fd2';
+
+/// What's left before payday: spendable balances run forward through bills,
+/// EMIs, card dues and typical everyday spending. Null while loading or
+/// without a spendable account.
+
+@ProviderFor(cashForecast)
+final cashForecastProvider = CashForecastProvider._();
+
+/// What's left before payday: spendable balances run forward through bills,
+/// EMIs, card dues and typical everyday spending. Null while loading or
+/// without a spendable account.
+
+final class CashForecastProvider
+    extends $FunctionalProvider<CashForecast?, CashForecast?, CashForecast?>
+    with $Provider<CashForecast?> {
+  /// What's left before payday: spendable balances run forward through bills,
+  /// EMIs, card dues and typical everyday spending. Null while loading or
+  /// without a spendable account.
+  CashForecastProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'cashForecastProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$cashForecastHash();
+
+  @$internal
+  @override
+  $ProviderElement<CashForecast?> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  CashForecast? create(Ref ref) {
+    return cashForecast(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(CashForecast? value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<CashForecast?>(value),
+    );
+  }
+}
+
+String _$cashForecastHash() => r'de13bd4e638758dbf5a233a4593ee20659090c99';

@@ -37,9 +37,24 @@ class AccountsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final all = ref.watch(allAccountsProvider).value ?? const <Account>[];
-    final accounts = all.where((a) => !a.archived).toList();
+    // A fund's accounts are listed under Funds, not with main money.
+    final accounts = all.where((a) => !a.archived && a.fundId == null).toList();
+    final fundAccounts = all
+        .where((a) => !a.archived && a.fundId != null)
+        .toList();
     final archived = all.where((a) => a.archived).toList();
     final balances = ref.watch(balancesProvider);
+    final separate = ref.watch(separateFundAccountsProvider);
+    final fundNames = {
+      for (final f in ref.watch(fundsProvider).value ?? const <Fund>[])
+        f.id: f.name,
+    };
+    // Net worth is main money; separate funds are shown beside it.
+    final mainWorth = netWorth({
+      for (final e in balances.entries)
+        if (!separate.contains(e.key)) e.key: e.value,
+    });
+    final keptApart = separate.fold(0, (s, id) => s + (balances[id] ?? 0));
 
     Color amountColor(int paise) =>
         paise < 0 ? theme.expenseColor : theme.colorScheme.onSurface;
@@ -102,15 +117,25 @@ class AccountsScreen extends ConsumerWidget {
                   Text('Net worth', style: theme.textTheme.labelMedium),
                   const SizedBox(height: 4),
                   Semantics(
-                    label: 'Net worth ${spokenPaise(netWorth(balances))}',
+                    label: 'Net worth ${spokenPaise(mainWorth)}',
                     excludeSemantics: true,
                     child: Text(
-                      formatPaise(netWorth(balances)),
+                      formatPaise(mainWorth),
                       style: theme.textTheme.headlineSmall?.copyWith(
                         fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
                   ),
+                  if (separate.isNotEmpty)
+                    TextButton(
+                      onPressed: () => context.push('/funds'),
+                      child: Text(
+                        '+ ${formatPaise(keptApart)} kept in funds',
+                        style: const TextStyle(
+                          fontFeatures: [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -120,6 +145,32 @@ class AccountsScreen extends ConsumerWidget {
               section(accountTypeLabels[type]!),
               for (final a in accounts.where((a) => a.type == type)) tile(a),
             ],
+          if (fundAccounts.isNotEmpty) ...[
+            section('Funds'),
+            for (final a in fundAccounts)
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: Color(a.color),
+                  foregroundColor: Colors.black87,
+                  child: Icon(iconFor(a.icon), size: 20),
+                ),
+                title: Text(a.name),
+                subtitle: Text(
+                  separate.contains(a.id)
+                      ? '${fundNames[a.fundId] ?? 'Fund'} · kept separate'
+                      : '${fundNames[a.fundId] ?? 'Fund'} · counts in main',
+                ),
+                trailing: Text(
+                  formatPaise(balances[a.id] ?? 0),
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    color: amountColor(balances[a.id] ?? 0),
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+                onTap: () => context.push('/funds/${a.fundId}'),
+                onLongPress: () => showAccountSheet(context, account: a),
+              ),
+          ],
           if (archived.isNotEmpty) ...[
             section('Archived'),
             for (final a in archived) tile(a),

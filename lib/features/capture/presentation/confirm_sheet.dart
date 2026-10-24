@@ -64,6 +64,9 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
   /// Paying into a loan with a rate: book this month's interest as an
   /// expense and only the rest against the loan.
   bool _splitInterest = true;
+
+  /// The fund a main-account spend is for; a fund's own account sets it.
+  late int? _fundId = widget.draft?.fundId;
   String? _error;
 
   CaptureDraft? get _d => widget.draft;
@@ -219,6 +222,14 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
       _suggestedCategoryId = _categoryId;
     }
     final transfer = _type == TxnType.transfer;
+    final openFunds = [
+      for (final f in ref.watch(fundsProvider).value ?? const <Fund>[])
+        if (!f.archived) f,
+    ];
+    final accountFund = accounts
+        .where((a) => a.id == _accountId)
+        .firstOrNull
+        ?.fundId;
     final learnKey = _learnKey();
     final unmatchedFrom = _unmatchedLabel(to: false);
     final unmatchedTo = transfer ? _unmatchedLabel(to: true) : null;
@@ -274,7 +285,12 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
             const SizedBox(height: 16),
             _Label(transfer ? 'From' : 'Account'),
             _AccountChips(
-              accounts: accounts,
+              // The suggested account first, so a match off-screen (e.g. a
+              // fund's account) is visible. Fixed once, so chips don't jump.
+              accounts: [
+                ...accounts.where((a) => a.id == _suggestedAccountId),
+                ...accounts.where((a) => a.id != _suggestedAccountId),
+              ],
               selected: _accountId,
               onSelected: (id) => setState(() {
                 _accountId = id;
@@ -327,6 +343,44 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
                   _categoryTouched = true;
                 }),
               ),
+              if (openFunds.isNotEmpty) ...[
+                const _Label('For a fund'),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final f in [
+                      ?openFunds
+                          .where((f) => f.id == (accountFund ?? _fundId))
+                          .firstOrNull,
+                      if ((accountFund ?? _fundId) != null) null,
+                      ...openFunds.where(
+                        (f) => f.id != (accountFund ?? _fundId),
+                      ),
+                      if ((accountFund ?? _fundId) == null) null,
+                    ])
+                      ChoiceChip(
+                        label: Text(f?.name ?? 'None'),
+                        selected: (accountFund ?? _fundId) == f?.id,
+                        // Spending from a fund's own account is always its.
+                        onSelected: accountFund != null
+                            ? null
+                            : (_) => setState(() => _fundId = f?.id),
+                      ),
+                  ],
+                ),
+                if (accountFund != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      "Spending from a fund's own account always counts for "
+                      'that fund.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+              ],
             ],
             const SizedBox(height: 12),
             TextField(
@@ -399,6 +453,14 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
         ),
       ),
     );
+  }
+
+  /// The fund a spend from [accountId] is for: the account's own fund, else
+  /// the one picked.
+  int? _fundFor(int accountId) {
+    final accounts = ref.read(allAccountsProvider).value ?? const <Account>[];
+    final own = accounts.where((a) => a.id == accountId).firstOrNull?.fundId;
+    return own ?? _fundId;
   }
 
   /// The loan being paid, when it has a rate to split interest by.
@@ -533,6 +595,7 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
           accountId: from,
           toAccountId: Value(to),
           categoryId: Value(type == TxnType.transfer ? null : _categoryId),
+          fundId: Value(type == TxnType.transfer ? null : _fundFor(from)),
           note: Value(_note.text.trim()),
           merchant: Value(d?.merchant),
           tags: Value(d?.tags ?? ''),

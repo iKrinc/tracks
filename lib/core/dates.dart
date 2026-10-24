@@ -43,3 +43,6 @@ String shortDate(DateTime d) =>
 /// Whole calendar days from [from] to [to] (negative if [to] is earlier).
 int daysBetween(DateTime from, DateTime to) =>
     dateOnly(to).difference(dateOnly(from)).inDays;
+
+/// [d]'s date [n] calendar days later (earlier if negative), at midnight.
+DateTime addDays(DateTime d, int n) => DateTime(d.year, d.month, d.day + n);

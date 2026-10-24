@@ -9,6 +9,7 @@ part 'app_database.drift.dart';
 
 @DriftDatabase(
   tables: [
+    Funds,
     Accounts,
     Categories,
     Transactions,
@@ -27,8 +28,9 @@ class AppDatabase extends _$AppDatabase {
   /// v4: no schema change; recolours old blue/purple defaults to the warm
   ///     palette (only colours still equal to an old default).
   /// v5: card and loan fields on accounts; recurrings.to_account_id.
+  /// v6: funds; accounts.fund_id and transactions.fund_id.
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   static QueryExecutor _open() => driftDatabase(
     name: 'tracks',
@@ -68,6 +70,11 @@ class AppDatabase extends _$AppDatabase {
         if (from >= 3) {
           await m.addColumn(recurrings, recurrings.toAccountId);
         }
+      }
+      if (from < 6) {
+        await m.createTable(funds);
+        await m.addColumn(accounts, accounts.fundId);
+        await m.addColumn(transactions, transactions.fundId);
       }
     },
     beforeOpen: (details) async {
@@ -256,6 +263,89 @@ class AppDatabase extends _$AppDatabase {
     }
     return q.get();
   }
+
+  Stream<List<Fund>> watchFunds() =>
+      (select(funds)..orderBy([(f) => OrderingTerm.asc(f.createdAt)])).watch();
+
+  Future<int> saveFund(FundsCompanion f) =>
+      into(funds).insertOnConflictUpdate(f);
+
+  /// Creates a fund with one account to hold its money (opening [startPaise]
+  /// counts as money already set aside). Returns the fund id.
+  Future<int> createFund({
+    required String name,
+    required int color,
+    String icon = 'savings',
+    int? budgetPaise,
+    int startPaise = 0,
+  }) => transaction(() async {
+    final id = await into(funds).insert(
+      FundsCompanion.insert(
+        name: name,
+        color: color,
+        icon: Value(icon),
+        budgetPaise: Value(budgetPaise),
+      ),
+    );
+    await into(accounts).insert(
+      AccountsCompanion.insert(
+        name: name,
+        type: AccountType.bank,
+        color: color,
+        icon: icon,
+        openingBalancePaise: Value(startPaise),
+        // So "catering 50000 marriage" spends from the fund.
+        matchHints: Value(name.toLowerCase()),
+        fundId: Value(id),
+      ),
+    );
+    return id;
+  });
+
+  /// Closes fund [fundId]: moves [leftPaise] from [potId] to [toAccountId]
+  /// (when both are given) and archives the fund and its accounts. Returns
+  /// the leftover transfer's id, so Undo can take it back.
+  Future<int?> closeFund(
+    int fundId, {
+    int leftPaise = 0,
+    int? potId,
+    int? toAccountId,
+    String? note,
+  }) => transaction(() async {
+    int? moved;
+    if (leftPaise > 0 && potId != null && toAccountId != null) {
+      moved = await into(transactions).insert(
+        TransactionsCompanion.insert(
+          type: TxnType.transfer,
+          amountPaise: leftPaise,
+          accountId: potId,
+          toAccountId: Value(toAccountId),
+          note: Value(note ?? ''),
+          occurredAt: DateTime.now(),
+        ),
+      );
+    }
+    await (update(accounts)..where((a) => a.fundId.equals(fundId))).write(
+      const AccountsCompanion(archived: Value(true)),
+    );
+    await (update(funds)..where((f) => f.id.equals(fundId))).write(
+      const FundsCompanion(archived: Value(true)),
+    );
+    return moved;
+  });
+
+  /// Reopens a closed fund; [undoTransferId] also takes back the leftover
+  /// transfer made when it was closed.
+  Future<void> reopenFund(int fundId, {int? undoTransferId}) =>
+      transaction(() async {
+        if (undoTransferId != null) await deleteTransaction(undoTransferId);
+        await (update(accounts)..where((a) => a.fundId.equals(fundId))).write(
+          const AccountsCompanion(archived: Value(false)),
+        );
+        await (update(funds)..where((f) => f.id.equals(fundId))).write(
+          const FundsCompanion(archived: Value(false)),
+        );
+      });
 
   Stream<List<Rule>> watchRules() =>
       (select(rules)..orderBy([(r) => OrderingTerm.asc(r.keyword)])).watch();

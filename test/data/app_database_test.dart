@@ -203,4 +203,58 @@ void main() {
     await db.deleteRule(rule.id);
     expect(await db.select(db.rules).get(), isEmpty);
   });
+
+  test('createFund makes the fund and an account to hold its money', () async {
+    final id = await db.createFund(
+      name: 'Marriage',
+      color: 0xFFF6D5D0,
+      icon: 'celebration',
+      budgetPaise: 80000000,
+      startPaise: 20000000,
+    );
+    final fund = (await db.select(db.funds).get()).single;
+    expect(fund.id, id);
+    expect(fund.mode, FundMode.separate);
+    expect(fund.budgetPaise, 80000000);
+    final pot = await (db.select(
+      db.accounts,
+    )..where((a) => a.fundId.equals(id))).getSingle();
+    expect(pot.name, 'Marriage');
+    expect(pot.openingBalancePaise, 20000000);
+    expect(pot.matchHints, 'marriage');
+  });
+
+  test('closing a fund moves what is left; Undo takes it all back', () async {
+    final id = await db.createFund(name: 'Trip', color: 0, startPaise: 500000);
+    final pot = await (db.select(
+      db.accounts,
+    )..where((a) => a.fundId.equals(id))).getSingle();
+    final cash = (await db.select(db.accounts).get()).first.id;
+    final moved = await db.closeFund(
+      id,
+      leftPaise: 500000,
+      potId: pot.id,
+      toAccountId: cash,
+    );
+    final t = (await db.select(db.transactions).get()).single;
+    expect(t.id, moved);
+    expect(t.toAccountId, cash);
+    expect((await db.select(db.funds).get()).single.archived, isTrue);
+    expect(
+      (await (db.select(
+        db.accounts,
+      )..where((a) => a.id.equals(pot.id))).getSingle()).archived,
+      isTrue,
+    );
+
+    await db.reopenFund(id, undoTransferId: moved);
+    expect(await db.select(db.transactions).get(), isEmpty);
+    expect((await db.select(db.funds).get()).single.archived, isFalse);
+    expect(
+      (await (db.select(
+        db.accounts,
+      )..where((a) => a.id.equals(pot.id))).getSingle()).archived,
+      isFalse,
+    );
+  });
 }
