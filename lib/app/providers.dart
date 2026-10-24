@@ -155,7 +155,7 @@ class ViewMode extends _$ViewMode {
   void set(PeriodView v) => state = v;
 }
 
-/// All transactions as plain records, for period totals and reports.
+/// Main-flow money as daily sums, for period totals and reports.
 @riverpod
 Stream<List<DatedTxn>> allDatedTxns(Ref ref) {
   final separate = ref.watch(separateFundAccountsProvider);
@@ -164,21 +164,31 @@ Stream<List<DatedTxn>> allDatedTxns(Ref ref) {
     for (final a in ref.watch(allAccountsProvider).value ?? const <Account>[])
       if (a.fundId != null) a.id: a.fundId!,
   };
+  // Daily sums from SQL, not every row: same totals, far less work.
   return ref
       .watch(appDatabaseProvider)
-      .watchAllTransactions()
+      .watchDailyTotals()
       .map(
         (rows) => [
-          for (final t in mainOnly(rows, separate))
-            (
-              type: t.type,
-              amountPaise: t.amountPaise,
-              occurredAt: t.occurredAt,
-              categoryId:
-                  t.type != TxnType.transfer && fundOf[t.accountId] != null
-                  ? fundCategoryId(fundOf[t.accountId]!)
-                  : t.categoryId,
-            ),
+          for (final t in rows)
+            if (separate.isEmpty ||
+                countsInMain((
+                  type: t.type,
+                  accountId: t.accountId,
+                  toAccountId: t.toAccountId,
+                  fundId: null,
+                  paise: t.amountPaise,
+                  categoryId: t.categoryId,
+                ), separate))
+              (
+                type: t.type,
+                amountPaise: t.amountPaise,
+                occurredAt: t.occurredAt,
+                categoryId:
+                    t.type != TxnType.transfer && fundOf[t.accountId] != null
+                    ? fundCategoryId(fundOf[t.accountId]!)
+                    : t.categoryId,
+              ),
         ],
       );
 }

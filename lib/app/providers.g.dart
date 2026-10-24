@@ -678,12 +678,12 @@ abstract class _$ViewMode extends $Notifier<PeriodView> {
   }
 }
 
-/// All transactions as plain records, for period totals and reports.
+/// Main-flow money as daily sums, for period totals and reports.
 
 @ProviderFor(allDatedTxns)
 final allDatedTxnsProvider = AllDatedTxnsProvider._();
 
-/// All transactions as plain records, for period totals and reports.
+/// Main-flow money as daily sums, for period totals and reports.
 
 final class AllDatedTxnsProvider
     extends
@@ -693,7 +693,7 @@ final class AllDatedTxnsProvider
           Stream<List<DatedTxn>>
         >
     with $FutureModifier<List<DatedTxn>>, $StreamProvider<List<DatedTxn>> {
-  /// All transactions as plain records, for period totals and reports.
+  /// Main-flow money as daily sums, for period totals and reports.
   AllDatedTxnsProvider._()
     : super(
         from: null,
@@ -720,7 +720,7 @@ final class AllDatedTxnsProvider
   }
 }
 
-String _$allDatedTxnsHash() => r'7a34d19905dada0ee6cdec44617674d0148d4901';
+String _$allDatedTxnsHash() => r'f8ecf1f8448fe365db1476b7f69b005d6a2ed964';
 
 /// Category id → parent id, for rolling subcategories up.
 
