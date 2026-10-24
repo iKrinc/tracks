@@ -33,7 +33,7 @@ Owner: KRINC (Srinivas). This is a personal-first app that may be released later
 | Database | drift (SQLite), with schema migrations + migration tests |
 | Navigation | go_router |
 | OCR | google_mlkit_text_recognition (on-device, free) |
-| Receive shares | receive_sharing_intent (text + images from other apps) |
+| Receive shares | own `tracks/share` MethodChannel in `MainActivity.kt` (text, images, files; copies streams in try/catch so a bad URI can't crash the app). Replaced receive_sharing_intent, which crashed natively on unreadable URIs |
 | Charts | fl_chart |
 | Notifications / reminders | flutter_local_notifications + timezone |
 | Import/export | csv, excel, file_picker, share_plus, path_provider |
@@ -124,13 +124,15 @@ input (shared SMS text | shared image | quick-add text | pasted text)
 - Optional encrypted backup to a user-chosen location (Drive/own server) — user-triggered only
 - Optional on-device LLM for messy inputs
 
-### Status (2026-10-23), see `docs/how-tracks-works.md`
+### Status (2026-10-24), see `docs/how-tracks-works.md`
 - **Phase 1 done:** quick-add, SMS and screenshot (on-device OCR) share, accounts,
   categories editor, Daily/Monthly/Yearly + calendar, search, backup/restore/CSV, app lock.
 - **Phase 2 done:** bills/autopay with notification reminders, budgets, credit cards
   (cycle, due, utilisation), loans and IOUs as accounts moved by transfers.
-- **Phase 3 started:** Reports tab. Next: rules learned from corrections, EMI interest split,
-  notification-listener capture, cash-flow forecast.
+- **Capture hardened:** real GPay/Canara/Kotak formats, SMS-thread screenshots → batch
+  review, own crash-proof share channel, parser fuzz tests, rules learned from corrections.
+- **Phase 3 started:** Reports tab, EMI principal/interest split. Next: cash-flow forecast,
+  notification-listener capture (opt-in), more bank fixtures.
 
 ---
 

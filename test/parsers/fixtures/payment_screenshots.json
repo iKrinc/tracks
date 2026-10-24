@@ -112,6 +112,65 @@
     }
   },
   {
+    "id": "gpay_2026_person",
+    "text": "K\nTo MANOJ P R\n₹200\nPay again\nCompleted\n20 Oct 2026, 7:32 pm\nKotak Mahindra Bank 4455\nUPI transaction ID\n600000000011\nTo: MANOJ P R\n••••11-3@ybl on PhonePe\nFrom: ARJUN TEST (Kotak Mahindra Bank)\n••••77-5@okaxis on Google Pay\nGoogle transaction ID\nCICAgXXXXXXXX\nPOWERED BY\nUPI\nG Pay",
+    "expect": {
+      "kind": "debit",
+      "amountPaise": 20000,
+      "merchant": "MANOJ P R",
+      "vpa": null,
+      "account": "4455",
+      "bank": "kotak",
+      "ref": "600000000011",
+      "date": "2026-10-20",
+      "time": "19:32"
+    }
+  },
+  {
+    "id": "gpay_2026_merchant",
+    "text": "To Swiggy\n₹248\nCompleted\n15 Oct 2026, 1:31 pm\nKotak Mahindra Bank 4455\nPayment of ₹248 completed\nReceiver's bank has confirmed deposit of money to Swiggy's bank account\nUPI transaction ID\n600000000012\nTo: Swiggy Limited\n••••gpay@okpayaxis\nFrom: ARJUN TEST (Kotak Mahindra Bank)\n••••77-5@okaxis on Google Pay\nGoogle transaction ID\nCICAgXXXXXXXX",
+    "expect": {
+      "kind": "debit",
+      "amountPaise": 24800,
+      "merchant": "Swiggy",
+      "vpa": null,
+      "account": "4455",
+      "bank": "kotak",
+      "ref": "600000000012",
+      "date": "2026-10-15",
+      "time": "13:31"
+    }
+  },
+  {
+    "id": "gpay_2026_symbol_dropped_by_ocr",
+    "text": "S\nTo Swiggy\n248\nCompleted\n15 Oct 2026, 1:31 pm\nKotak Mahindra Bank 4455\nUPI transaction ID\n600000000013",
+    "expect": {
+      "kind": "debit",
+      "amountPaise": 24800,
+      "merchant": "Swiggy",
+      "vpa": null,
+      "account": "4455",
+      "bank": "kotak",
+      "ref": "600000000013",
+      "date": "2026-10-15"
+    }
+  },
+  {
+    "id": "gpay_2026_received",
+    "text": "P\nFrom PRIYA S\n₹1,500\nCompleted\n2 Oct 2026, 9:05 am\nKotak Mahindra Bank 4455\nUPI transaction ID\n600000000014\nFrom: PRIYA S\n••••88-1@okicici on Google Pay\nTo: ARJUN TEST (Kotak Mahindra Bank)",
+    "expect": {
+      "kind": "credit",
+      "amountPaise": 150000,
+      "merchant": "PRIYA S",
+      "vpa": null,
+      "account": "4455",
+      "bank": "kotak",
+      "ref": "600000000014",
+      "date": "2026-10-02",
+      "time": "09:05"
+    }
+  },
+  {
     "id": "not_a_payment",
     "text": "Hey are we meeting at 5?\nSee you",
     "expect": {

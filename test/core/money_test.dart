@@ -7,6 +7,9 @@ void main() {
       expect(parseRupeesToPaise('20'), 2000);
       expect(parseRupeesToPaise('0'), 0);
       expect(parseRupeesToPaise('50000'), 5000000);
+      expect(parseRupeesToPaise('999999999999'), 99999999999900);
+      expect(parseRupeesToPaise('9999999999999'), isNull);
+      expect(parseRupeesToPaise('9' * 30), isNull);
     });
 
     test('decimals are exact, never via double', () {

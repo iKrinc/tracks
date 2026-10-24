@@ -1,5 +1,27 @@
 import 'package:tracks/core/money.dart';
 
+/// Time of day read from a message or receipt.
+typedef ClockTime = ({int hour, int minute});
+
+final _clock = RegExp(
+  r'^[,\s]*(?:at\s+)?(\d{1,2}):(\d{2})(?::\d{2})?\s*([ap]\.?m\.?)?',
+  caseSensitive: false,
+);
+
+/// A time right after a date ("03-12-25 10:11:02", "20 Oct 2026, 7:32 pm").
+ClockTime? timeAfter(String text, int dateEnd) {
+  if (dateEnd < 0 || dateEnd > text.length) return null;
+  final m = _clock.firstMatch(text.substring(dateEnd));
+  if (m == null) return null;
+  var h = int.parse(m.group(1)!);
+  final min = int.parse(m.group(2)!);
+  final ampm = m.group(3)?.toLowerCase().replaceAll('.', '');
+  if (ampm == 'pm' && h < 12) h += 12;
+  if (ampm == 'am' && h == 12) h = 0;
+  if (h > 23 || min > 59) return null;
+  return (hour: h, minute: min);
+}
+
 /// Direction of a bank/UPI SMS, or `ignore` for OTPs, promos and alerts.
 enum SmsKind { debit, credit, ignore }
 
@@ -20,9 +42,11 @@ class SmsParseResult {
     this.bankHint,
     this.merchant,
     this.date,
+    this.time,
     this.refNo,
     this.channel = SmsChannel.unknown,
     this.flags = const {},
+    this.counterAccountLast4,
   });
 
   const SmsParseResult.ignored(SmsIgnoreReason reason)
@@ -39,9 +63,14 @@ class SmsParseResult {
   /// Payee/payer name or UPI VPA.
   final String? merchant;
   final DateTime? date;
+  final ClockTime? time;
   final String? refNo;
   final SmsChannel channel;
   final Set<SmsFlag> flags;
+
+  /// The other own account in a transfer, e.g. the bank account a card
+  /// bill was paid from.
+  final String? counterAccountLast4;
 
   @override
   String toString() =>
@@ -56,6 +85,12 @@ final _otp = RegExp(
   r'\bOTP\b|one[- ]time password|verification code',
   caseSensitive: _ci,
 );
+
+/// Notices about money that did *not* move (or hasn't yet).
+final _notMoved = RegExp(
+  r'\b(cancell?ed|declined|failed|unsuccessful|will be (?:debited|deducted|charged)|is due|due (?:on|by)|reminder|could not be processed)\b',
+  caseSensitive: _ci,
+);
 final _debitVerb = RegExp(
   r'\b(debited|debit|spent|sent|paid|withdrawn|executed|purchase)\b',
   caseSensitive: _ci,
@@ -66,7 +101,10 @@ final _creditVerb = RegExp(
 );
 
 const _num = r'(\d[\d,]*(?:\.\d{1,2})?)';
-final _currencyAmount = RegExp('(?:rs\\.?|inr|₹)\\s*$_num', caseSensitive: _ci);
+final _currencyAmount = RegExp(
+  '(?:rs\\.?|inr\\.?|₹)\\s*$_num',
+  caseSensitive: _ci,
+);
 // SBI style: "debited by 120.0" with no currency marker.
 final _verbAmount = RegExp(
   '(?:debited|credited)\\s+(?:by|with|for)\\s+(?:rs\\.?|inr|₹)?\\s*$_num',
@@ -123,7 +161,7 @@ final _namedDate = RegExp(
 // and "9XXXX" are skipped) and stops before a connector word or sentence end.
 const _name = r"([A-Za-z][A-Za-z0-9 &*._'-]*?)";
 const _stop =
-    r"(?=\s+(?:via|on|ref\w*|upi|avl|a/c|has|is|was|towards)\b|[.;]\s|[.;]?$|\n)";
+    r"(?=\s+(?:via|on|ref\w*|upi|avl|a/c|has|is|was|towards)\b|[.,;]\s|[.,;]?$|\n)";
 const _title = r'(?:(?:mr|ms|mrs|shri|smt)\.?\s+)?';
 RegExp _m(String p) => RegExp(p, caseSensitive: _ci, multiLine: true);
 
@@ -157,6 +195,9 @@ SmsParseResult parseBankSms(String text) {
   if (_otp.hasMatch(t)) {
     return const SmsParseResult.ignored(SmsIgnoreReason.otp);
   }
+  if (_notMoved.hasMatch(t)) {
+    return const SmsParseResult.ignored(SmsIgnoreReason.noTransaction);
+  }
 
   final debit = _debitVerb.firstMatch(t);
   final credit = _creditVerb.firstMatch(t);
@@ -174,16 +215,22 @@ SmsParseResult parseBankSms(String text) {
     return const SmsParseResult.ignored(SmsIgnoreReason.noAmount);
   }
 
+  final flags = _flags(t);
+  final date = _dateMatch(t);
   return SmsParseResult(
     kind: kind,
     amountPaise: amount,
     accountLast4: _accountLast4(t, kind),
+    counterAccountLast4: flags.contains(SmsFlag.cardPayment)
+        ? _last4(_fromAccount.firstMatch(t)?.group(1))
+        : null,
     bankHint: _banks[_bank.firstMatch(t)?.group(1)?.toLowerCase()],
     merchant: _merchant(t, kind),
-    date: _date(t),
+    date: date?.date,
+    time: date == null ? null : timeAfter(t, date.end),
     refNo: _ref.firstMatch(t)?.group(1),
     channel: _channel(t),
-    flags: _flags(t),
+    flags: flags,
   );
 }
 
@@ -201,10 +248,12 @@ int? _amount(String t) {
   return null;
 }
 
-String? _accountLast4(String t, SmsKind kind) {
-  final digits =
-      (kind == SmsKind.debit ? _fromAccount.firstMatch(t) : null)?.group(1) ??
-      _account.firstMatch(t)?.group(1);
+String? _accountLast4(String t, SmsKind kind) => _last4(
+  (kind == SmsKind.debit ? _fromAccount.firstMatch(t) : null)?.group(1) ??
+      _account.firstMatch(t)?.group(1),
+);
+
+String? _last4(String? digits) {
   if (digits == null) return null;
   return digits.length <= 4 ? digits : digits.substring(digits.length - 4);
 }
@@ -221,6 +270,14 @@ String? _merchant(String t, SmsKind kind) {
     }
   }
   return null;
+}
+
+({DateTime date, int end})? _dateMatch(String t) {
+  final n = _numericDate.firstMatch(t);
+  final w = _namedDate.firstMatch(t);
+  final m = (w != null && (n == null || w.start < n.start)) ? w : n;
+  final d = _date(t);
+  return d == null || m == null ? null : (date: d, end: m.end);
 }
 
 DateTime? _date(String t) {

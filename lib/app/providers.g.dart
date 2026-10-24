@@ -136,6 +136,44 @@ final class AllAccountsProvider
 
 String _$allAccountsHash() => r'45fa61c515e23fcfbdb502b1b275f55fc19a48f4';
 
+@ProviderFor(rules)
+final rulesProvider = RulesProvider._();
+
+final class RulesProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Rule>>,
+          List<Rule>,
+          Stream<List<Rule>>
+        >
+    with $FutureModifier<List<Rule>>, $StreamProvider<List<Rule>> {
+  RulesProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'rulesProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$rulesHash();
+
+  @$internal
+  @override
+  $StreamProviderElement<List<Rule>> $createElement($ProviderPointer pointer) =>
+      $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<Rule>> create(Ref ref) {
+    return rules(ref);
+  }
+}
+
+String _$rulesHash() => r'16d91af3ab37db64ec19ec7b922a984a5f8f30e1';
+
 @ProviderFor(categories)
 final categoriesProvider = CategoriesFamily._();
 
@@ -777,12 +815,14 @@ final class DueItemsProvider
 
 String _$dueItemsHash() => r'ad2d5376a4b311dcb758ca409197a28747568b48';
 
-/// Reminder notifications to schedule for active bills.
+/// Reminder notifications to schedule: active bills, plus each credit
+/// card's due date (ids offset so they never clash with bill ids).
 
 @ProviderFor(reminderPlan)
 final reminderPlanProvider = ReminderPlanProvider._();
 
-/// Reminder notifications to schedule for active bills.
+/// Reminder notifications to schedule: active bills, plus each credit
+/// card's due date (ids offset so they never clash with bill ids).
 
 final class ReminderPlanProvider
     extends
@@ -792,7 +832,8 @@ final class ReminderPlanProvider
           List<PlannedReminder>
         >
     with $Provider<List<PlannedReminder>> {
-  /// Reminder notifications to schedule for active bills.
+  /// Reminder notifications to schedule: active bills, plus each credit
+  /// card's due date (ids offset so they never clash with bill ids).
   ReminderPlanProvider._()
     : super(
         from: null,
@@ -827,7 +868,7 @@ final class ReminderPlanProvider
   }
 }
 
-String _$reminderPlanHash() => r'0f6f18f1fb0b9aab3b3c8e4ddc8e7519b327f008';
+String _$reminderPlanHash() => r'b820a2c7a471a703a195338a9188188e2a632caa';
 
 @ProviderFor(accountTxns)
 final accountTxnsProvider = AccountTxnsFamily._();

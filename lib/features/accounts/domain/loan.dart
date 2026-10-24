@@ -37,10 +37,32 @@ LoanProgress loanProgress({
       final r = rateBp / 10000 / 12;
       final x = 1 - r * owed / emi;
       // EMI below the monthly interest never pays off.
-      months = x <= 0 ? null : (-math.log(x) / math.log(1 + r)).ceil();
+      // The EMI is rounded to paise, which can leave a few paise for one
+      // more month (24.00002): under 1% of an EMI is rounding, not a month.
+      months = x <= 0 ? null : (-math.log(x) / math.log(1 + r) - 0.01).ceil();
     }
   } else if (owed == 0) {
     months = emi == null ? null : 0;
   }
   return (paidPaise: paid, percentPaid: percent, monthsLeft: months);
+}
+
+typedef EmiSplit = ({int principalPaise, int interestPaise});
+
+/// Splits a loan payment into this month's interest on what is still owed
+/// (reducing balance, rate/12) and the principal that actually lowers the
+/// loan. Integer paise, rounded half up. Without a rate it's all principal.
+EmiSplit splitEmi({
+  required int paymentPaise,
+  required int outstandingPaise,
+  int? rateBp,
+}) {
+  final bp = rateBp ?? 0;
+  if (bp <= 0 || outstandingPaise <= 0 || paymentPaise <= 0) {
+    return (principalPaise: paymentPaise, interestPaise: 0);
+  }
+  // outstanding × (bp / 10000) / 12.
+  final monthly = (outstandingPaise * bp + 60000) ~/ 120000;
+  final interest = monthly > paymentPaise ? paymentPaise : monthly;
+  return (principalPaise: paymentPaise - interest, interestPaise: interest);
 }

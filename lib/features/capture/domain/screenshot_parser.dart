@@ -13,6 +13,7 @@ class ScreenshotParse {
     this.bankHint,
     this.refNo,
     this.date,
+    this.time,
   });
 
   final SmsKind kind;
@@ -23,6 +24,7 @@ class ScreenshotParse {
   final String? bankHint;
   final String? refNo;
   final DateTime? date;
+  final ClockTime? time;
 }
 
 const _ci = false;
@@ -41,6 +43,12 @@ final _amountLine = RegExp(
   caseSensitive: _ci,
 );
 final _trailing4 = RegExp(r'(?<![\d.,])(\d{4})\s*$');
+final _header = RegExp(r'^(to|from)\s+(?![:\s])(.{2,60})$', caseSensitive: _ci);
+final _completed = RegExp(
+  r'completed|successful|success|paid',
+  caseSensitive: _ci,
+);
+final _bareAmount = RegExp(r'^\s*([\d,]{1,9}(?:\.\d{1,2})?)\s*$');
 final _vpa = RegExp(r'\b[a-z0-9][\w.\-]*@[a-z]{2,}\b', caseSensitive: _ci);
 final _last4 = RegExp(r'(?:•{2,}|[xX*]{2,}|\s-)\s*(\d{4})\b');
 final _ref = RegExp(
@@ -77,11 +85,29 @@ ScreenshotParse? parsePaymentScreenshot(String text) {
       if (l.trim().isNotEmpty) l.trim(),
   ];
   final all = lines.join('\n');
+  // GPay (2025+) leads with "To NAME" / "From NAME" (no colon) above the
+  // amount; older layouts and other apps say "Paid to" / "Received from".
+  int? headerAt;
+  SmsKind? headerKind;
+  String? headerName;
+  for (var i = 0; i < lines.length && i < 6; i++) {
+    final m = _header.firstMatch(lines[i]);
+    if (m != null) {
+      headerAt = i;
+      headerKind = m.group(1)!.toLowerCase() == 'to'
+          ? SmsKind.debit
+          : SmsKind.credit;
+      headerName = m.group(2)!.trim();
+      break;
+    }
+  }
   final SmsKind kind;
   if (_received.hasMatch(all)) {
     kind = SmsKind.credit;
   } else if (_paid.hasMatch(all)) {
     kind = SmsKind.debit;
+  } else if (headerKind != null && _completed.hasMatch(all)) {
+    kind = headerKind;
   } else {
     return null;
   }
@@ -94,15 +120,27 @@ ScreenshotParse? parsePaymentScreenshot(String text) {
       if (amount != null && amount > 0) break;
     }
   }
+  // OCR sometimes drops the big ₹: accept a bare number right below the
+  // header (never a year, time or 6+ digit reference).
+  if ((amount == null || amount <= 0) && headerAt != null) {
+    for (var i = headerAt + 1; i < lines.length && i <= headerAt + 3; i++) {
+      final m = _bareAmount.firstMatch(lines[i]);
+      if (m != null) {
+        amount = parseRupeesToPaise(m.group(1)!);
+        break;
+      }
+    }
+  }
   if (amount == null || amount <= 0) return null;
 
   // Merchant / person: "Paid to X" (same or next line), "Received from X",
   // then "To: X" / "From: X" as a fallback.
-  String? merchant;
   String? clean(String s) {
     final v = s.replaceAll(_vpa, '').trim();
     return v.isEmpty ? null : v;
   }
+
+  String? merchant = headerName == null ? null : clean(headerName);
 
   for (var i = 0; i < lines.length && merchant == null; i++) {
     final m = RegExp(
@@ -152,25 +190,49 @@ ScreenshotParse? parsePaymentScreenshot(String text) {
   }
 
   DateTime? date;
+  ClockTime? time;
   final dm = _date.firstMatch(all);
   if (dm != null) {
     final d = int.parse(dm.group(1)!);
     final mo = _months[dm.group(2)!.toLowerCase()]!;
     final y = int.parse(dm.group(3)!);
     final dt = DateTime(y, mo, d);
-    if (dt.month == mo && dt.day == d) date = dt;
+    if (dt.month == mo && dt.day == d) {
+      date = dt;
+      time = timeAfter(all, dm.end);
+    }
+  }
+  // PhonePe puts the time first: "09:15 pm on 20 Oct 2026".
+  if (time == null && dm != null) {
+    final before = all.substring(0, dm.start);
+    final t = RegExp(
+      r'(\d{1,2}:\d{2}\s*[ap]\.?m\.?)\s+on\s*$',
+      caseSensitive: false,
+    ).firstMatch(before);
+    if (t != null) time = timeAfter(t.group(1)!, 0);
   }
 
   return ScreenshotParse(
     kind: kind,
     amountPaise: amount,
     merchant: merchant,
-    vpa: _vpa.firstMatch(all)?.group(0),
+    vpa: _fullVpa(all),
     accountLast4: last4,
     bankHint: bank,
     refNo: _ref.firstMatch(all)?.group(1),
     date: date,
+    time: time,
   );
+}
+
+/// The first UPI id that isn't masked ("••••29-2@ybl" is useless).
+String? _fullVpa(String text) {
+  for (final m in _vpa.allMatches(text)) {
+    final before = m.start == 0 ? '' : text[m.start - 1];
+    if (before == '•' || before == '*' || before == '.') continue;
+    return m.group(0);
+  }
+  return null;
 }
 
 bool _isBankLine(String s) => _bankIn(s) != null || _last4.hasMatch(s);

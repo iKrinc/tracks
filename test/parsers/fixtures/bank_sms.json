@@ -2,81 +2,383 @@
   {
     "id": "hdfc_upi_sent",
     "text": "Sent Rs.250.00\nFrom HDFC Bank A/C *1234\nTo SWIGGY\nOn 21/10/26\nRef 629412345678\nNot You?\nCall 1800XXXXXXX/SMS BLOCK UPI to 9XXXXXXXXX",
-    "expect": {"kind": "debit", "amountPaise": 25000, "account": "1234", "bank": "hdfc", "merchant": "SWIGGY", "date": "2026-10-21", "ref": "629412345678", "channel": "upi"}
+    "expect": {
+      "kind": "debit",
+      "amountPaise": 25000,
+      "account": "1234",
+      "bank": "hdfc",
+      "merchant": "SWIGGY",
+      "date": "2026-10-21",
+      "ref": "629412345678",
+      "channel": "upi"
+    }
   },
   {
     "id": "sbi_upi_debit",
     "text": "Dear UPI user A/C X5678 debited by 120.0 on date 20Oct26 trf to RAVI KUMAR Refno 629398765432. If not u? call 1800XXXXXXX. -SBI",
-    "expect": {"kind": "debit", "amountPaise": 12000, "account": "5678", "bank": "sbi", "merchant": "RAVI KUMAR", "date": "2026-10-20", "ref": "629398765432", "channel": "upi"}
+    "expect": {
+      "kind": "debit",
+      "amountPaise": 12000,
+      "account": "5678",
+      "bank": "sbi",
+      "merchant": "RAVI KUMAR",
+      "date": "2026-10-20",
+      "ref": "629398765432",
+      "channel": "upi"
+    }
   },
   {
     "id": "icici_card_spend",
     "text": "INR 1,499.00 spent using ICICI Bank Card XX9012 on 19-Oct-26 on AMAZON PAY IN. Avl Limit: INR 98,501.00. If not you, call 1800XXXXXXX or SMS BLOCK 9012 to 9XXXXXXXXX.",
-    "expect": {"kind": "debit", "amountPaise": 149900, "account": "9012", "bank": "icici", "merchant": "AMAZON PAY IN", "date": "2026-10-19", "ref": null, "channel": "card"}
+    "expect": {
+      "kind": "debit",
+      "amountPaise": 149900,
+      "account": "9012",
+      "bank": "icici",
+      "merchant": "AMAZON PAY IN",
+      "date": "2026-10-19",
+      "ref": null,
+      "channel": "card"
+    }
   },
   {
     "id": "axis_atm_withdrawal",
     "text": "INR 2000.00 withdrawn from A/c no. XX3456 on 18-10-2026 at ATM BLR MG ROAD. Avl Bal INR 15,230.50 -Axis Bank",
-    "expect": {"kind": "debit", "amountPaise": 200000, "account": "3456", "bank": "axis", "merchant": "ATM BLR MG ROAD", "date": "2026-10-18", "ref": null, "channel": "atm"}
+    "expect": {
+      "kind": "debit",
+      "amountPaise": 200000,
+      "account": "3456",
+      "bank": "axis",
+      "merchant": "ATM BLR MG ROAD",
+      "date": "2026-10-18",
+      "ref": null,
+      "channel": "atm"
+    }
   },
   {
     "id": "hdfc_salary_neft",
     "text": "Your A/c XX1234 is credited with INR 50,000.00 on 01-10-2026 by NEFT from ACME TECHNOLOGIES PVT LTD. Avl Bal: INR 62,345.67 -HDFC Bank",
-    "expect": {"kind": "credit", "amountPaise": 5000000, "account": "1234", "bank": "hdfc", "merchant": "ACME TECHNOLOGIES PVT LTD", "date": "2026-10-01", "ref": null, "channel": "netbanking"}
+    "expect": {
+      "kind": "credit",
+      "amountPaise": 5000000,
+      "account": "1234",
+      "bank": "hdfc",
+      "merchant": "ACME TECHNOLOGIES PVT LTD",
+      "date": "2026-10-01",
+      "ref": null,
+      "channel": "netbanking"
+    }
   },
   {
     "id": "kotak_upi_received",
     "text": "Received Rs.500.00 in your Kotak Bank A/c X7890 from priya.s@okaxis on 17-10-26.UPI Ref:629311112222.",
-    "expect": {"kind": "credit", "amountPaise": 50000, "account": "7890", "bank": "kotak", "merchant": "priya.s@okaxis", "date": "2026-10-17", "ref": "629311112222", "channel": "upi"}
+    "expect": {
+      "kind": "credit",
+      "amountPaise": 50000,
+      "account": "7890",
+      "bank": "kotak",
+      "merchant": "priya.s@okaxis",
+      "date": "2026-10-17",
+      "ref": "629311112222",
+      "channel": "upi"
+    }
   },
   {
     "id": "icici_card_refund",
     "text": "Refund of Rs.199.00 for your transaction at FLIPKART has been credited to your ICICI Bank Credit Card XX9012 on 16-Oct-26.",
-    "expect": {"kind": "credit", "amountPaise": 19900, "account": "9012", "bank": "icici", "merchant": "FLIPKART", "date": "2026-10-16", "ref": null, "channel": "card", "flags": ["refund"]}
+    "expect": {
+      "kind": "credit",
+      "amountPaise": 19900,
+      "account": "9012",
+      "bank": "icici",
+      "merchant": "FLIPKART",
+      "date": "2026-10-16",
+      "ref": null,
+      "channel": "card",
+      "flags": [
+        "refund"
+      ]
+    }
   },
   {
     "id": "icici_otp",
     "text": "123456 is your OTP for transaction of INR 1,499.00 at AMAZON on ICICI Bank card XX9012. Valid for 10 mins. Do not share with anyone.",
-    "expect": {"kind": "ignore", "ignoreReason": "otp"}
+    "expect": {
+      "kind": "ignore",
+      "ignoreReason": "otp"
+    }
   },
   {
     "id": "hdfc_upi_autopay",
     "text": "Your UPI AutoPay of Rs.649.00 for NETFLIX has been successfully executed from A/c XX1234 on 15-10-26. UPI Ref 629300001111 -HDFC Bank",
-    "expect": {"kind": "debit", "amountPaise": 64900, "account": "1234", "bank": "hdfc", "merchant": "NETFLIX", "date": "2026-10-15", "ref": "629300001111", "channel": "upi", "flags": ["autopay"]}
+    "expect": {
+      "kind": "debit",
+      "amountPaise": 64900,
+      "account": "1234",
+      "bank": "hdfc",
+      "merchant": "NETFLIX",
+      "date": "2026-10-15",
+      "ref": "629300001111",
+      "channel": "upi",
+      "flags": [
+        "autopay"
+      ]
+    }
   },
   {
     "id": "hdfc_emi_nach",
     "text": "Dear Customer, EMI of Rs.12,345 for Loan A/c XX4321 has been debited from your A/c XX1234 on 05-10-2026 via NACH. -HDFC Bank",
-    "expect": {"kind": "debit", "amountPaise": 1234500, "account": "1234", "bank": "hdfc", "merchant": null, "date": "2026-10-05", "ref": null, "channel": "nach", "flags": ["emi"]}
+    "expect": {
+      "kind": "debit",
+      "amountPaise": 1234500,
+      "account": "1234",
+      "bank": "hdfc",
+      "merchant": null,
+      "date": "2026-10-05",
+      "ref": null,
+      "channel": "nach",
+      "flags": [
+        "emi"
+      ]
+    }
   },
   {
     "id": "promo_loan_offer",
     "text": "Get a Personal Loan up to Rs.5,00,000 at 10.5% p.a. Apply now: bit.ly/xxxxx -HDFC Bank",
-    "expect": {"kind": "ignore", "ignoreReason": "noTransaction"}
+    "expect": {
+      "kind": "ignore",
+      "ignoreReason": "noTransaction"
+    }
   },
   {
     "id": "balance_alert",
     "text": "Avl Bal in A/c XX1234 is INR 10,000.00 as on 14-10-26 -HDFC Bank",
-    "expect": {"kind": "ignore", "ignoreReason": "noTransaction"}
+    "expect": {
+      "kind": "ignore",
+      "ignoreReason": "noTransaction"
+    }
   },
   {
     "id": "paytm_upi_paid",
     "text": "Paid Rs. 40 to CHAI POINT via Paytm UPI from SBI a/c XX5678. UPI Ref No 629322223333",
-    "expect": {"kind": "debit", "amountPaise": 4000, "account": "5678", "bank": "sbi", "merchant": "CHAI POINT", "date": null, "ref": "629322223333", "channel": "upi"}
+    "expect": {
+      "kind": "debit",
+      "amountPaise": 4000,
+      "account": "5678",
+      "bank": "sbi",
+      "merchant": "CHAI POINT",
+      "date": null,
+      "ref": "629322223333",
+      "channel": "upi"
+    }
   },
   {
     "id": "sbi_transfer_debit",
     "text": "Your A/C XXXXX5678 Debited INR 300.00 on 12/10/26 -Transferred to Mr. ANIL K. Avl Bal INR 5,000.00-SBI",
-    "expect": {"kind": "debit", "amountPaise": 30000, "account": "5678", "bank": "sbi", "merchant": "ANIL K", "date": "2026-10-12", "ref": null, "channel": "unknown"}
+    "expect": {
+      "kind": "debit",
+      "amountPaise": 30000,
+      "account": "5678",
+      "bank": "sbi",
+      "merchant": "ANIL K",
+      "date": "2026-10-12",
+      "ref": null,
+      "channel": "unknown"
+    }
   },
   {
     "id": "icici_card_payment_received",
     "text": "Payment of Rs 10,000.00 received towards your Credit Card XX9012 on 10-Oct-26. Thank you. -ICICI Bank",
-    "expect": {"kind": "credit", "amountPaise": 1000000, "account": "9012", "bank": "icici", "merchant": null, "date": "2026-10-10", "ref": null, "channel": "card", "flags": ["cardPayment"]}
+    "expect": {
+      "kind": "credit",
+      "amountPaise": 1000000,
+      "account": "9012",
+      "bank": "icici",
+      "merchant": null,
+      "date": "2026-10-10",
+      "ref": null,
+      "channel": "card",
+      "flags": [
+        "cardPayment"
+      ]
+    }
   },
   {
     "id": "upi_debit_merchant_credited",
     "text": "A/c XX1234 debited for Rs 1,200.00 on 13-10-26; ZOMATO credited. UPI Ref 629333334444",
-    "expect": {"kind": "debit", "amountPaise": 120000, "account": "1234", "bank": null, "merchant": "ZOMATO", "date": "2026-10-13", "ref": "629333334444", "channel": "upi"}
+    "expect": {
+      "kind": "debit",
+      "amountPaise": 120000,
+      "account": "1234",
+      "bank": null,
+      "merchant": "ZOMATO",
+      "date": "2026-10-13",
+      "ref": "629333334444",
+      "channel": "upi"
+    }
+  },
+  {
+    "id": "canara_paid_thru",
+    "text": "Rs.1149.80 paid thru A/C XX3388 on 03-12-25 10:11:02 to KIRAN SHEKAR, UPI Ref 570000000001. If not done, SMS BLOCKUPI to 9XXXXXXXXX.-Canara Bank",
+    "expect": {
+      "kind": "debit",
+      "amountPaise": 114980,
+      "account": "3388",
+      "bank": "canara",
+      "merchant": "KIRAN SHEKAR",
+      "date": "2025-12-03",
+      "ref": "570000000001",
+      "channel": "upi",
+      "time": "10:11"
+    }
+  },
+  {
+    "id": "canara_title_name",
+    "text": "Rs.12.00 paid thru A/C XX3388 on 06-12-25 15:59:28 to Mrs Lakshmi Dev, UPI Ref 570000000002. If not done, SMS BLOCKUPI to 9XXXXXXXXX.-Canara Bank",
+    "expect": {
+      "kind": "debit",
+      "amountPaise": 1200,
+      "account": "3388",
+      "bank": "canara",
+      "merchant": "Lakshmi Dev",
+      "date": "2025-12-06",
+      "ref": "570000000002",
+      "channel": "upi",
+      "time": "15:59"
+    }
+  },
+  {
+    "id": "canara_truncated_merchant",
+    "text": "Rs.999.00 paid thru A/C XX3388 on 08-12-25 13:26:54 to Google India Di, UPI Ref 534000000003. If not done, SMS BLOCKUPI to 9XXXXXXXXX.-Canara Bank",
+    "expect": {
+      "kind": "debit",
+      "amountPaise": 99900,
+      "account": "3388",
+      "bank": "canara",
+      "merchant": "Google India Di",
+      "date": "2025-12-08",
+      "ref": "534000000003",
+      "channel": "upi"
+    }
+  },
+  {
+    "id": "canara_double_space_name",
+    "text": "Rs.182.25 paid thru A/C XX3388 on 21-12-25 18:07:32 to NAVEEN  KUMA, UPI Ref 572000000004. If not done, SMS BLOCKUPI to 9XXXXXXXXX.-Canara Bank",
+    "expect": {
+      "kind": "debit",
+      "amountPaise": 18225,
+      "account": "3388",
+      "bank": "canara",
+      "merchant": "NAVEEN KUMA",
+      "date": "2025-12-21",
+      "ref": "572000000004",
+      "channel": "upi"
+    }
+  },
+  {
+    "id": "kotak_sent_to_vpa",
+    "text": "Sent Rs.560.00 from Kotak Bank AC X4455 to paytm-99999999@ptys on 07-03-26.UPI Ref 606000000005. Not you, https://kotak.com/KBANKT/Fraud",
+    "expect": {
+      "kind": "debit",
+      "amountPaise": 56000,
+      "account": "4455",
+      "bank": "kotak",
+      "merchant": "paytm-99999999@ptys",
+      "date": "2026-03-07",
+      "ref": "606000000005",
+      "channel": "upi"
+    }
+  },
+  {
+    "id": "kotak_sent_to_self",
+    "text": "Sent Rs.2500.00 from Kotak Bank AC X4455 to arjun.test@okhdfcbank on 09-12-25.UPI Ref 570000000006. Not you, https://kotak.com/KBANKT/Fraud",
+    "expect": {
+      "kind": "debit",
+      "amountPaise": 250000,
+      "account": "4455",
+      "bank": "kotak",
+      "merchant": "arjun.test@okhdfcbank",
+      "date": "2025-12-09",
+      "ref": "570000000006",
+      "channel": "upi"
+    }
+  },
+  {
+    "id": "kotak_received_imps",
+    "text": "Received Rs. 1000.00 on 20-01-26 in your Kotak Bank A/C x4455 by an A/C linked to mobile x000. IMPS Ref no 602000000007.",
+    "expect": {
+      "kind": "credit",
+      "amountPaise": 100000,
+      "account": "4455",
+      "bank": "kotak",
+      "merchant": null,
+      "date": "2026-01-20",
+      "ref": "602000000007",
+      "channel": "netbanking"
+    }
+  },
+  {
+    "id": "kotak_received_vpa",
+    "text": "Received Rs.10.00 in your Kotak Bank AC X4455 from arjun.test@okaxis on 23-02-26.UPI Ref:605000000008.",
+    "expect": {
+      "kind": "credit",
+      "amountPaise": 1000,
+      "account": "4455",
+      "bank": "kotak",
+      "merchant": "arjun.test@okaxis",
+      "date": "2026-02-23",
+      "ref": "605000000008",
+      "channel": "upi"
+    }
+  },
+  {
+    "id": "kotak_card_bill_paid",
+    "text": "Thank you for your payment of INR. 4391.24 for Kotak Bank Credit Card No XXXX9917 received from your Kotak Bank Account XXXX4455 on 30-Sep-2026.",
+    "expect": {
+      "kind": "credit",
+      "amountPaise": 439124,
+      "account": "9917",
+      "counterAccount": "4455",
+      "bank": "kotak",
+      "merchant": null,
+      "date": "2026-09-30",
+      "ref": null,
+      "channel": "card",
+      "flags": [
+        "cardPayment"
+      ]
+    }
+  },
+  {
+    "id": "kotak_autopay_cancelled",
+    "text": "Auto-Pay YN00xx0X0x of USD 150.00 on Kotak Card x9917 for Some Service is cancelled as per your request. T&C apply",
+    "expect": {
+      "kind": "ignore",
+      "ignoreReason": "noTransaction"
+    }
+  },
+  {
+    "id": "kotak_branch_feedback",
+    "text": "Dear Customer, Thank you for visiting our Branch. Do share your banking experience with us at https://cka.nu/KOTAKB/xxxxxx Kotak Bank",
+    "expect": {
+      "kind": "ignore",
+      "ignoreReason": "noTransaction"
+    }
+  },
+  {
+    "id": "failed_upi",
+    "text": "Your UPI payment of Rs.300.00 to SWIGGY from A/c XX4455 has failed. Any amount debited will be refunded.",
+    "expect": {
+      "kind": "ignore",
+      "ignoreReason": "noTransaction"
+    }
+  },
+  {
+    "id": "future_mandate_notice",
+    "text": "Rs.649.00 will be debited from A/c XX4455 on 15-11-26 towards UPI AutoPay for NETFLIX.",
+    "expect": {
+      "kind": "ignore",
+      "ignoreReason": "noTransaction"
+    }
   }
 ]

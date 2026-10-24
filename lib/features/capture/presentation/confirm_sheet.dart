@@ -7,9 +7,11 @@ import 'package:tracks/core/dates.dart';
 import 'package:tracks/core/money.dart';
 import 'package:tracks/data/app_database.dart';
 import 'package:tracks/data/default_data.dart';
+import 'package:tracks/features/accounts/domain/loan.dart';
 import 'package:tracks/features/capture/domain/account_match.dart';
 import 'package:tracks/features/capture/domain/capture_draft.dart';
 import 'package:tracks/features/capture/domain/category_guess.dart';
+import 'package:tracks/features/capture/domain/rules.dart';
 
 /// Opens the Confirm Card, pre-filled from [draft] (or blank for the form
 /// fallback). Resolves to `true` when a transaction was saved.
@@ -47,6 +49,21 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
   bool _categoryTouched = false;
   List<Transaction> _duplicates = const [];
   late bool _asIou = widget.draft?.person != null;
+
+  /// The learned rule that pre-filled this card, if any.
+  RuleLike? _rule;
+  bool _ruleLooked = false;
+
+  /// What the card first suggested; changing it is a correction worth
+  /// remembering.
+  int? _suggestedAccountId;
+  int? _suggestedCategoryId;
+  bool _suggestionsTaken = false;
+  bool _remember = true;
+
+  /// Paying into a loan with a rate: book this month's interest as an
+  /// expense and only the rest against the loan.
+  bool _splitInterest = true;
   String? _error;
 
   CaptureDraft? get _d => widget.draft;
@@ -93,6 +110,8 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
     if (accounts.isEmpty) return;
     final d = _d;
     if (_accountId == null) {
+      // The capture's own account hint beats a learned rule.
+      final ruleAccount = _rule?.accountId;
       final id = d == null
           ? null
           : d.accountId ??
@@ -101,7 +120,8 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
                   hint: d.accountHint,
                   last4: d.accountLast4,
                   bank: d.bankHint,
-                );
+                ) ??
+                (accounts.any((a) => a.id == ruleAccount) ? ruleAccount : null);
       _accountMatched = id != null;
       // Unmatched (e.g. a card bill payment, whose source bank is rarely in
       // the SMS): fall back to the first account; the user can change it.
@@ -146,7 +166,23 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
     final categories =
         ref.watch(categoriesProvider(kind)).value ?? const <Category>[];
 
-    _resolveAccounts(accounts);
+    // Kept live for the EMI interest split, which needs what's still owed.
+    ref.watch(balancesProvider);
+    final rules = ref.watch(rulesProvider);
+    if (!_ruleLooked && rules.hasValue) {
+      _ruleLooked = true;
+      final d = _d;
+      if (d != null) {
+        _rule = findRule(
+          ruleLikes(rules.value!),
+          merchant: d.merchant,
+          note: d.note,
+        );
+      }
+    }
+    // Wait for rules (a few ms) so a learned account isn't overridden by
+    // the first-account fallback.
+    if (_ruleLooked) _resolveAccounts(accounts);
     final presetCategory = _d?.categoryId;
     if (!_categoryTouched &&
         _categoryId == null &&
@@ -154,7 +190,18 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
         categories.any((c) => c.id == presetCategory)) {
       _categoryId = presetCategory;
     }
-    if (!_categoryTouched && _categoryId == null && categories.isNotEmpty) {
+    final ruleCategory = _rule?.categoryId;
+    if (!_categoryTouched &&
+        _categoryId == null &&
+        ruleCategory != null &&
+        categories.any((c) => c.id == ruleCategory)) {
+      _categoryId = ruleCategory;
+    }
+    // The keyword guess waits for rules too, or it would beat a learned one.
+    if (_ruleLooked &&
+        !_categoryTouched &&
+        _categoryId == null &&
+        categories.isNotEmpty) {
       final name = guessCategoryName(
         '${_d?.categoryText ?? ''} ${_note.text}',
         categories.map((c) => c.name),
@@ -163,7 +210,16 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
         _categoryId = categories.firstWhere((c) => c.name == name).id;
       }
     }
+    if (!_suggestionsTaken &&
+        _ruleLooked &&
+        accounts.isNotEmpty &&
+        categories.isNotEmpty) {
+      _suggestionsTaken = true;
+      _suggestedAccountId = _accountId;
+      _suggestedCategoryId = _categoryId;
+    }
     final transfer = _type == TxnType.transfer;
+    final learnKey = _learnKey();
     final unmatchedFrom = _unmatchedLabel(to: false);
     final unmatchedTo = transfer ? _unmatchedLabel(to: true) : null;
 
@@ -250,6 +306,14 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
                         type: AccountType.creditCard,
                       ),
               ),
+              if (_loanPaid(accounts) case final loan?)
+                _InterestSplit(
+                  loan: loan,
+                  paymentPaise: parseRupeesToPaise(_amount.text) ?? 0,
+                  split: _split(loan, parseRupeesToPaise(_amount.text) ?? 0),
+                  on: _splitInterest,
+                  onChanged: (v) => setState(() => _splitInterest = v),
+                ),
             ] else ...[
               const _Label('Category'),
               _CategoryChips(
@@ -290,6 +354,20 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
                     selected: _asIou,
                     onSelected: (v) => setState(() => _asIou = v),
                   ),
+                if (learnKey != null)
+                  FilterChip(
+                    label: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 240),
+                      child: Text(
+                        'Always for "$learnKey"',
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    tooltip: 'Next time, fill this in the same way',
+                    showCheckmark: true,
+                    selected: _remember,
+                    onSelected: (v) => setState(() => _remember = v),
+                  ),
                 if (_d?.source == TxnSource.sms)
                   const Chip(
                     avatar: Icon(Icons.sms_outlined, size: 18),
@@ -318,6 +396,39 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
         ),
       ),
     );
+  }
+
+  /// The loan being paid, when it has a rate to split interest by.
+  Account? _loanPaid(List<Account> accounts) {
+    if (_type != TxnType.transfer || _asIou) return null;
+    final to = accounts.where((a) => a.id == _toAccountId).firstOrNull;
+    if (to == null || to.type != AccountType.loan) return null;
+    return (to.interestRateBp ?? 0) > 0 ? to : null;
+  }
+
+  /// Principal and interest of [paise] paid into [loan].
+  EmiSplit _split(Account loan, int paise) {
+    final balance = ref.read(balancesProvider)[loan.id] ?? 0;
+    return splitEmi(
+      paymentPaise: paise,
+      // A loan's balance is negative: what's still owed.
+      outstandingPaise: -balance,
+      rateBp: loan.interestRateBp,
+    );
+  }
+
+  /// The keyword to offer "Always for …" under, when the user corrected
+  /// the suggested category or account of a capture.
+  String? _learnKey() {
+    final d = _d;
+    if (d == null || !_suggestionsTaken || _asIou) return null;
+    if (_type == TxnType.transfer) return null;
+    final categoryChanged =
+        _categoryId != null && _categoryId != _suggestedCategoryId;
+    final accountChanged =
+        _accountId != null && _accountId != _suggestedAccountId;
+    if (!categoryChanged && !accountChanged) return null;
+    return ruleKey(merchant: d.merchant, note: _note.text);
   }
 
   String _dateLabel(DateTime d) {
@@ -372,35 +483,148 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
         from = personId;
       }
     }
-    await db.addTransaction(
-      TransactionsCompanion.insert(
-        type: type,
-        amountPaise: paise,
-        accountId: from,
-        toAccountId: Value(to),
-        categoryId: Value(type == TxnType.transfer ? null : _categoryId),
-        note: Value(_note.text.trim()),
-        merchant: Value(d?.merchant),
-        tags: Value(d?.tags ?? ''),
-        occurredAt: DateTime(
-          _date.year,
-          _date.month,
-          _date.day,
-          now.hour,
-          now.minute,
-          now.second,
-        ),
-        source: Value(d?.source ?? TxnSource.manual),
-        rawSourceText: Value(d?.rawText),
-        refNo: Value(d?.refNo),
-        linkedRecurringId: Value(d?.linkedRecurringId),
-      ),
+    final occurredAt = DateTime(
+      _date.year,
+      _date.month,
+      _date.day,
+      d?.time?.hour ?? now.hour,
+      d?.time?.minute ?? now.minute,
+      d?.time == null ? now.second : 0,
     );
+    // An EMI: the interest part is spending, only the principal lowers
+    // the loan.
+    final accounts = ref.read(accountsProvider).value ?? const <Account>[];
+    final loan = _splitInterest ? _loanPaid(accounts) : null;
+    final split = loan == null ? null : _split(loan, paise);
+    final expense = split == null || split.interestPaise == 0
+        ? const <Category>[]
+        : await ref.read(categoriesProvider(CategoryKind.expense).future);
+    // Interest and principal are saved together or not at all. A payment
+    // smaller than the month's interest is all interest: no transfer.
+    final transferPaise = split?.principalPaise ?? paise;
+    await db.transaction(() async {
+      if (loan != null && split != null && split.interestPaise > 0) {
+        await db.addTransaction(
+          TransactionsCompanion.insert(
+            type: TxnType.expense,
+            amountPaise: split.interestPaise,
+            accountId: from,
+            categoryId: Value(
+              expense.where((c) => c.name == 'EMI & Loans').firstOrNull?.id,
+            ),
+            note: Value('Interest · ${loan.name}'),
+            tags: Value(
+              [d?.tags ?? '', 'interest'].where((t) => t.isNotEmpty).join(','),
+            ),
+            occurredAt: occurredAt,
+            source: Value(d?.source ?? TxnSource.manual),
+            rawSourceText: Value(d?.rawText),
+          ),
+        );
+      }
+      if (transferPaise <= 0) return;
+      await db.addTransaction(
+        TransactionsCompanion.insert(
+          type: type,
+          amountPaise: transferPaise,
+          accountId: from,
+          toAccountId: Value(to),
+          categoryId: Value(type == TxnType.transfer ? null : _categoryId),
+          note: Value(_note.text.trim()),
+          merchant: Value(d?.merchant),
+          tags: Value(d?.tags ?? ''),
+          // The SMS/receipt's own time when it has one, else now.
+          occurredAt: occurredAt,
+          source: Value(d?.source ?? TxnSource.manual),
+          rawSourceText: Value(d?.rawText),
+          refNo: Value(d?.refNo),
+          linkedRecurringId: Value(d?.linkedRecurringId),
+        ),
+      );
+    });
+    final learnKey = _learnKey();
+    if (learnKey != null && _remember) {
+      await db.learnRule(
+        learnKey,
+        categoryId: _categoryId != _suggestedCategoryId ? _categoryId : null,
+        accountId: _accountId != _suggestedAccountId ? _accountId : null,
+      );
+    } else if (_rule != null && learnKey == null) {
+      await db.bumpRule(_rule!.id);
+    }
     final recurringId = d?.linkedRecurringId;
     if (recurringId != null) {
       await ref.read(appDatabaseProvider).markRecurringPaid(recurringId, _date);
     }
     if (mounted) Navigator.of(context).pop(true);
+  }
+}
+
+/// "₹6,542 lowers the loan · ₹3,958 interest at 9.5%", with a toggle for
+/// prepayments the user wants booked entirely against the loan.
+class _InterestSplit extends StatelessWidget {
+  const _InterestSplit({
+    required this.loan,
+    required this.paymentPaise,
+    required this.split,
+    required this.on,
+    required this.onChanged,
+  });
+
+  final Account loan;
+  final int paymentPaise;
+  final EmiSplit split;
+  final bool on;
+  final ValueChanged<bool> onChanged;
+
+  /// 950 bp → "9.5", 900 → "9", 1075 → "10.75"; no doubles.
+  static String _percent(int bp) {
+    final whole = bp ~/ 100;
+    final frac = (bp % 100)
+        .toString()
+        .padLeft(2, '0')
+        .replaceFirst(RegExp(r'0+$'), '');
+    return frac.isEmpty ? '$whole' : '$whole.$frac';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final rate = _percent(loan.interestRateBp!);
+    final String text;
+    final String spoken;
+    if (paymentPaise <= 0) {
+      text = 'Enter the amount to see the interest at $rate%';
+      spoken = text.replaceFirst('%', ' percent');
+    } else if (on) {
+      text =
+          '${formatPaise(split.principalPaise)} lowers the loan\n'
+          '${formatPaise(split.interestPaise)} interest at $rate%';
+      spoken =
+          '${spokenPaise(split.principalPaise)} lowers the loan, '
+          '${spokenPaise(split.interestPaise)} interest at $rate percent';
+    } else {
+      text = 'All ${formatPaise(paymentPaise)} lowers the loan (a prepayment)';
+      spoken = 'All ${spokenPaise(paymentPaise)} lowers the loan';
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: SwitchListTile(
+        contentPadding: EdgeInsets.zero,
+        isThreeLine: true,
+        value: on,
+        onChanged: onChanged,
+        title: const Text('Split out interest'),
+        subtitle: Semantics(
+          label: spoken,
+          excludeSemantics: true,
+          child: Text(
+            text,
+            style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+          ),
+        ),
+      ),
+    );
   }
 }
 

@@ -13,6 +13,7 @@ class CaptureDraft {
     this.note = '',
     this.merchant,
     this.date,
+    this.time,
     this.accountHint,
     this.accountLast4,
     this.bankHint,
@@ -37,6 +38,9 @@ class CaptureDraft {
 
   /// Date only; null means "today".
   final DateTime? date;
+
+  /// Time of day from the SMS/receipt; null means "now".
+  final ClockTime? time;
   final String? accountHint;
   final String? accountLast4;
   final String? bankHint;
@@ -74,6 +78,12 @@ class CaptureReady extends CaptureOutcome {
   final CaptureDraft draft;
 }
 
+/// Several transactions found at once (e.g. a screenshot of an SMS thread).
+class CaptureMany extends CaptureOutcome {
+  const CaptureMany(this.drafts);
+  final List<CaptureDraft> drafts;
+}
+
 class CaptureIgnored extends CaptureOutcome {
   const CaptureIgnored(this.message);
 
@@ -81,8 +91,40 @@ class CaptureIgnored extends CaptureOutcome {
   final String message;
 }
 
+/// Runs [parse]; if it throws (a format nobody foresaw), falls back to a
+/// blank draft that keeps the raw text so nothing is lost and nothing
+/// crashes. The user fills it in by hand.
+CaptureOutcome _safely(
+  String raw,
+  TxnSource source,
+  CaptureOutcome Function() parse,
+) {
+  try {
+    return parse();
+  } catch (_) {
+    return CaptureReady(
+      CaptureDraft(
+        type: TxnType.expense,
+        source: source,
+        note: '',
+        rawText: raw,
+      ),
+    );
+  }
+}
+
 /// A line typed into the quick-add bar.
 CaptureOutcome captureFromQuickAdd(
+  String text, {
+  required DateTime now,
+  required Set<String> accountKeywords,
+}) => _safely(
+  text,
+  TxnSource.quickText,
+  () => _quickAdd(text, now: now, accountKeywords: accountKeywords),
+);
+
+CaptureOutcome _quickAdd(
   String text, {
   required DateTime now,
   required Set<String> accountKeywords,
@@ -97,6 +139,16 @@ CaptureOutcome captureFromQuickAdd(
 /// Text shared into the app: a bank/UPI SMS, or failing that a quick-add
 /// line (e.g. "chai 20" shared from a notes app).
 CaptureOutcome captureFromSharedText(
+  String text, {
+  required DateTime now,
+  required Set<String> accountKeywords,
+}) => _safely(
+  text,
+  TxnSource.sms,
+  () => _sharedText(text, now: now, accountKeywords: accountKeywords),
+);
+
+CaptureOutcome _sharedText(
   String text, {
   required DateTime now,
   required Set<String> accountKeywords,
@@ -132,7 +184,82 @@ CaptureOutcome captureFromSharedText(
 
 /// OCR text of a shared payment screenshot (GPay / PhonePe / Paytm / bank
 /// app). Falls back to the SMS parser for screenshots of SMS.
-CaptureOutcome captureFromScreenshotText(String text) {
+CaptureOutcome captureFromScreenshotText(String text) =>
+    _safely(text, TxnSource.screenshot, () => _screenshotText(text));
+
+/// OCR'd screenshot as ML Kit blocks (one per bubble/paragraph). A payment
+/// receipt gives one draft; a screenshot of an SMS thread gives one per
+/// message, in order, with repeats (same ref no.) dropped.
+CaptureOutcome captureFromScreenshotBlocks(List<String> blocks) {
+  final full = blocks.join('\n');
+  return _safely(full, TxnSource.screenshot, () {
+    if (blocks.isEmpty) {
+      return const CaptureIgnored("Couldn't find any text in that image");
+    }
+    final receipt = parsePaymentScreenshot(full);
+    if (receipt != null) return _screenshotText(full);
+    final drafts = <CaptureDraft>[];
+    final seen = <String>{};
+    // OCR wraps bubble lines; the SMS parser wants one flowing sentence.
+    // A line ending in - or / is a date OCR wrapped ("22-10-" / "26").
+    String flat(String b) => b
+        .replaceAll(RegExp(r'(?<=\d[-/])\s*\n\s*(?=\d)'), '')
+        .replaceAll(RegExp(r'\s*\n\s*'), ' ')
+        .trim();
+    for (var i = 0; i < blocks.length; i++) {
+      var text = flat(blocks[i]);
+      var sms = parseBankSms(text);
+      // OCR sometimes splits one bubble into two blocks. Join it with the
+      // next block when that one means nothing alone and joining reads
+      // more (an amount at all, or the date / ref no. the first half lacks).
+      int filled(SmsParseResult r) => r.kind == SmsKind.ignore
+          ? 0
+          : 1 + (r.date == null ? 0 : 1) + (r.refNo == null ? 0 : 1);
+      var joined = text;
+      var used = 0;
+      for (var j = 1; j <= 3 && i + j < blocks.length && filled(sms) < 3; j++) {
+        final next = flat(blocks[i + j]);
+        if (parseBankSms(next).kind != SmsKind.ignore) break;
+        joined = '$joined $next';
+        final again = parseBankSms(joined);
+        if (filled(again) > filled(sms)) {
+          text = joined;
+          sms = again;
+          used = j;
+        }
+      }
+      i += used;
+      if (sms.kind == SmsKind.ignore) continue;
+      final key = sms.refNo ?? '${sms.amountPaise}|${sms.date}|${sms.merchant}';
+      if (!seen.add(key)) continue;
+      drafts.add(_asScreenshot(_fromSms(sms, text)));
+    }
+    if (drafts.isEmpty) return _screenshotText(full);
+    return drafts.length == 1
+        ? CaptureReady(drafts.single)
+        : CaptureMany(drafts);
+  });
+}
+
+CaptureDraft _asScreenshot(CaptureDraft d) => CaptureDraft(
+  type: d.type,
+  source: TxnSource.screenshot,
+  amountPaise: d.amountPaise,
+  note: d.note,
+  merchant: d.merchant,
+  date: d.date,
+  time: d.time,
+  accountLast4: d.accountLast4,
+  bankHint: d.bankHint,
+  toAccountHint: d.toAccountHint,
+  toAccountLast4: d.toAccountLast4,
+  tags: d.tags,
+  categoryText: d.categoryText,
+  refNo: d.refNo,
+  rawText: d.rawText,
+);
+
+CaptureOutcome _screenshotText(String text) {
   final raw = text.trim();
   final shot = parsePaymentScreenshot(raw);
   if (shot != null) {
@@ -145,6 +272,7 @@ CaptureOutcome captureFromScreenshotText(String text) {
         note: who ?? '',
         merchant: shot.vpa ?? shot.merchant,
         date: shot.date,
+        time: shot.time,
         accountLast4: shot.accountLast4,
         bankHint: shot.bankHint,
         categoryText: '${shot.merchant ?? ''} ${shot.vpa ?? ''}'.trim(),
@@ -155,25 +283,7 @@ CaptureOutcome captureFromScreenshotText(String text) {
   }
   final sms = parseBankSms(raw);
   if (sms.kind != SmsKind.ignore) {
-    final d = _fromSms(sms, raw);
-    return CaptureReady(
-      CaptureDraft(
-        type: d.type,
-        source: TxnSource.screenshot,
-        amountPaise: d.amountPaise,
-        note: d.note,
-        merchant: d.merchant,
-        date: d.date,
-        accountLast4: d.accountLast4,
-        bankHint: d.bankHint,
-        toAccountHint: d.toAccountHint,
-        toAccountLast4: d.toAccountLast4,
-        tags: d.tags,
-        categoryText: d.categoryText,
-        refNo: d.refNo,
-        rawText: raw,
-      ),
-    );
+    return CaptureReady(_asScreenshot(_fromSms(sms, raw)));
   }
   return const CaptureIgnored(
     "Couldn't find a payment in that screenshot. Try the receipt screen.",
@@ -232,9 +342,10 @@ CaptureDraft _fromSms(SmsParseResult r, String raw) {
     note: atm ? 'ATM withdrawal' : (r.merchant ?? ''),
     merchant: r.merchant,
     date: r.date,
-    // A card bill payment moves money *into* the card; the paying bank
-    // account usually isn't in the SMS.
-    accountLast4: cardPayment ? null : r.accountLast4,
+    time: r.time,
+    // A card bill payment moves money from the bank account (when the SMS
+    // names it) *into* the card.
+    accountLast4: cardPayment ? r.counterAccountLast4 : r.accountLast4,
     bankHint: cardPayment ? null : r.bankHint,
     toAccountHint: atm ? 'cash' : null,
     toAccountLast4: cardPayment ? r.accountLast4 : null,
@@ -246,4 +357,28 @@ CaptureDraft _fromSms(SmsParseResult r, String raw) {
     refNo: r.refNo,
     rawText: raw,
   );
+}
+
+/// Combines the captures of several shared screenshots into one review,
+/// dropping repeats (same ref no., or same amount/date/payee).
+CaptureOutcome mergeCaptures(List<CaptureOutcome> outcomes) {
+  if (outcomes.length == 1) return outcomes.single;
+  final drafts = <CaptureDraft>[];
+  final seen = <String>{};
+  for (final o in outcomes) {
+    final found = switch (o) {
+      CaptureReady(:final draft) => [draft],
+      CaptureMany(:final drafts) => drafts,
+      CaptureIgnored() => const <CaptureDraft>[],
+    };
+    for (final d in found) {
+      final key = d.refNo ?? '${d.amountPaise}|${d.date}|${d.merchant}';
+      if (seen.add(key)) drafts.add(d);
+    }
+  }
+  if (drafts.isEmpty) {
+    return outcomes.whereType<CaptureIgnored>().firstOrNull ??
+        const CaptureIgnored('No payments found in those images');
+  }
+  return drafts.length == 1 ? CaptureReady(drafts.single) : CaptureMany(drafts);
 }
