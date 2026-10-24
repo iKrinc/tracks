@@ -50,7 +50,7 @@ class FundScreen extends ConsumerWidget {
     final pot = view.accounts.where((a) => !a.archived).firstOrNull;
     final mainAccounts = [
       for (final a in ref.watch(accountsProvider).value ?? const <Account>[])
-        if (a.fundId == null) a,
+        if (a.fundId == null && spendableAccountTypes.contains(a.type)) a,
     ];
     final separate = fund.mode == FundMode.separate;
     final ranked = s.byCategory.entries.toList()
@@ -62,11 +62,17 @@ class FundScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Text(fund.name),
         actions: [
-          if (!fund.archived)
+          if (fund.archived)
+            TextButton(
+              onPressed: () =>
+                  ref.read(appDatabaseProvider).reopenFund(fund.id),
+              child: const Text('Reopen'),
+            )
+          else
             PopupMenuButton<String>(
               tooltip: 'More',
               onSelected: (v) {
-                if (v == 'edit') _editBudget(context, ref, fund);
+                if (v == 'edit') _editBudget(context, fund);
                 if (v == 'close') {
                   _closeFund(context, ref, fund, pot, s.inFundPaise);
                 }
@@ -142,7 +148,8 @@ class FundScreen extends ConsumerWidget {
                           ? 'Its money and spending stay out of Home, Reports, '
                                 'budgets, net worth and the payday forecast.'
                           : 'Counted in Home, Reports, budgets and net worth, '
-                                'and still tracked here.',
+                                'and still tracked here. The payday forecast '
+                                'never spends it.',
                     ),
                     onChanged: (v) => ref
                         .read(appDatabaseProvider)
@@ -238,52 +245,18 @@ class FundScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _editBudget(
-    BuildContext context,
-    WidgetRef ref,
-    Fund fund,
-  ) async {
-    final c = TextEditingController(
-      text: fund.budgetPaise == null
-          ? ''
-          : formatPaise(fund.budgetPaise!, symbol: false, hideZeroPaise: true),
-    );
-    final result = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Budget for this fund'),
-        content: TextField(
-          controller: c,
-          autofocus: true,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: const InputDecoration(
-            prefixText: '₹ ',
-            hintText: 'Blank for no budget',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, c.text),
-            child: const Text('Save'),
-          ),
-        ],
-      ),
-    );
-    c.dispose();
-    if (result == null) return;
-    final budget = result.trim().isEmpty ? null : parseRupeesToPaise(result);
-    if (result.trim().isNotEmpty && budget == null) return;
-    await ref
-        .read(appDatabaseProvider)
-        .saveFund(fund.copyWith(budgetPaise: Value(budget)).toCompanion(true));
-  }
+  Future<void> _editBudget(BuildContext context, Fund fund) =>
+      showModalBottomSheet<void>(
+        context: context,
+        isScrollControlled: true,
+        useRootNavigator: true,
+        showDragHandle: true,
+        useSafeArea: true,
+        builder: (_) => _BudgetSheet(fund: fund),
+      );
 
   /// Moves what's left to a main account, then archives the fund and its
-  /// accounts. Its history stays, under Closed.
+  /// accounts. Its history stays under Closed; Undo or Reopen bring it back.
   Future<void> _closeFund(
     BuildContext context,
     WidgetRef ref,
@@ -293,9 +266,13 @@ class FundScreen extends ConsumerWidget {
   ) async {
     final main = [
       for (final a in ref.read(accountsProvider).value ?? const <Account>[])
-        if (a.fundId == null) a,
+        if (a.fundId == null && spendableAccountTypes.contains(a.type)) a,
     ];
-    final target = await showModalBottomSheet<Account?>(
+    final moveLeft = left > 0 && pot != null;
+    final messenger = ScaffoldMessenger.of(context);
+    // Returns the chosen account, or the fund's own account when nothing
+    // moves; null when dismissed.
+    final target = await showModalBottomSheet<Account>(
       context: context,
       useRootNavigator: true,
       showDragHandle: true,
@@ -312,12 +289,16 @@ class FundScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              left > 0
-                  ? 'Move the ${formatPaise(left)} left to:'
-                  : 'Nothing is left in it. Its history stays under Closed.',
+              !moveLeft
+                  ? 'Nothing is left to move. Its history stays under Closed, '
+                        'and you can reopen it.'
+                  : main.isEmpty
+                  ? 'Add a main account first, to move the '
+                        '${formatPaise(left)} left into it.'
+                  : 'Move the ${formatPaise(left)} left to:',
             ),
             const SizedBox(height: 12),
-            if (left > 0)
+            if (moveLeft)
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -330,7 +311,7 @@ class FundScreen extends ConsumerWidget {
                     ),
                 ],
               )
-            else
+            else if (pot != null)
               FilledButton(
                 onPressed: () => Navigator.pop(context, pot),
                 style: FilledButton.styleFrom(
@@ -344,27 +325,125 @@ class FundScreen extends ConsumerWidget {
     );
     if (target == null) return;
     final db = ref.read(appDatabaseProvider);
-    await db.transaction(() async {
-      if (left > 0 && pot != null) {
-        await db.addTransaction(
-          TransactionsCompanion.insert(
-            type: TxnType.transfer,
-            amountPaise: left,
-            accountId: pot.id,
-            toAccountId: Value(target.id),
-            note: Value('Left over from ${fund.name}'),
-            occurredAt: DateTime.now(),
+    final moved = await db.closeFund(
+      fund.id,
+      leftPaise: moveLeft ? left : 0,
+      potId: pot?.id,
+      toAccountId: moveLeft ? target.id : null,
+      note: 'Left over from ${fund.name}',
+    );
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: Text(
+            moved == null
+                ? '${fund.name} closed'
+                : '${fund.name} closed, ${formatPaise(left)} moved to '
+                      '${target.name}',
           ),
+          action: SnackBarAction(
+            label: 'Undo',
+            onPressed: () => db.reopenFund(fund.id, undoTransferId: moved),
+          ),
+        ),
+      );
+  }
+}
+
+class _BudgetSheet extends ConsumerStatefulWidget {
+  const _BudgetSheet({required this.fund});
+
+  final Fund fund;
+
+  @override
+  ConsumerState<_BudgetSheet> createState() => _BudgetSheetState();
+}
+
+class _BudgetSheetState extends ConsumerState<_BudgetSheet> {
+  late final _budget = TextEditingController(
+    text: widget.fund.budgetPaise == null
+        ? ''
+        : formatPaise(
+            widget.fund.budgetPaise!,
+            symbol: false,
+            hideZeroPaise: true,
+          ),
+  );
+  String? _error;
+
+  @override
+  void dispose() {
+    _budget.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final text = _budget.text.trim();
+    final budget = text.isEmpty ? null : parseRupeesToPaise(text);
+    if (text.isNotEmpty && budget == null) {
+      setState(() => _error = 'Amounts look like 8,00,000 or 50000');
+      return;
+    }
+    await ref
+        .read(appDatabaseProvider)
+        .saveFund(
+          widget.fund.copyWith(budgetPaise: Value(budget)).toCompanion(true),
         );
-      }
-      for (final a
-          in ref.read(allAccountsProvider).value ?? const <Account>[]) {
-        if (a.fundId == fund.id) {
-          await db.saveAccount(a.copyWith(archived: true).toCompanion(true));
-        }
-      }
-      await db.saveFund(fund.copyWith(archived: true).toCompanion(true));
-    });
+    if (mounted) Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: EdgeInsets.only(
+        left: 20,
+        right: 20,
+        bottom: MediaQuery.viewInsetsOf(context).bottom + 20,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'Budget for ${widget.fund.name}',
+            style: theme.textTheme.headlineSmall,
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _budget,
+            autofocus: true,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            decoration: const InputDecoration(
+              prefixText: '₹ ',
+              labelText: 'Budget in all',
+              hintText: 'Blank for no budget',
+            ),
+          ),
+          if (_error != null)
+            Semantics(
+              liveRegion: true,
+              child: Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  _error!,
+                  style: TextStyle(color: theme.colorScheme.error),
+                ),
+              ),
+            ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: _save,
+            icon: const Icon(Icons.check),
+            label: const Text('Save'),
+            style: FilledButton.styleFrom(
+              minimumSize: const Size.fromHeight(52),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

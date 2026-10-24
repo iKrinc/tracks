@@ -252,7 +252,55 @@ hides an account; it doesn't erase money.
   background. That's long enough that the fingerprint prompt itself doesn't
   re-lock the app.
 
-### 3.12 Crash safety
+### 3.12 Cash-flow forecast ("what's left before payday")
+`insights/domain/forecast.dart`, `forecast_sheet.dart`, `cashForecastProvider`
+1. **Start:** today's balance of cash, bank and wallet accounts. Cards,
+   loans, IOUs and every fund's money are left out.
+2. **Window:** up to the day before the next salary/income bill (within 45
+   days), else 30 days.
+3. **Walk day by day:** each bill, EMI and income on its due dates
+   (`occurrence`/`nextDue`), each card's unpaid statement on its due day
+   (unless a bill already pays that card), minus typical everyday spending.
+4. **Everyday spending** is the average daily expense from spendable
+   accounts over the last 60 days, leaving out bills and fund spends (a
+   ₹50,000 wedding caterer isn't a usual day). With less history it averages
+   over the days there are.
+5. **Cautious by design:** overdue bills are counted today; overdue income
+   isn't (it may already have come in).
+6. **Answer:** what's left on the last day, the lowest point and its date,
+   and a daily allowance: what's free after bills alone, divided by the days
+   left. Home shows one line ("₹12,340 left before payday · spend up to
+   ₹1,760 a day") or, when money runs short, the day and whether bills or
+   spending cause it. The sheet lists every step with the running balance.
+
+### 3.13 Funds: money kept for one purpose (a wedding, a trip)
+`funds/domain/fund_math.dart`, `funds_screen.dart`, `fund_screen.dart`,
+schema v6
+- **Model:** a fund owns one or more accounts that hold its money (created
+  with it, named after it, so "catering 50000 marriage" spends from it) and
+  an optional budget. A spend from a main account can also be tagged to a
+  fund ("For a fund" on the Confirm Card).
+- **Money in:** "Add money" is a transfer from a main account; "Gift
+  received" is income straight into the fund; "Already set aside" when
+  creating it is money already kept elsewhere, such as an FD.
+- **Keep separate (default):** the fund's own spending, income and balance
+  stay out of Home, Reports, budgets and net worth (`countsInMain`). Moving
+  money between main and the fund still shows in main as a transfer, so main
+  balances stay true. A main-account spend tagged to the fund stays main
+  money (it left your main account) and also counts towards the fund's
+  budget. Accounts shows "+ ₹1,50,000 kept in funds" beside net worth.
+- **Merge:** one switch counts the fund in all main views. It stays tracked
+  on its own screen, and you can switch back at any time. The payday
+  forecast never counts any fund's money as spendable: it's earmarked.
+- **Fund screen:** in the fund, spent against budget, gifts and what was
+  paid from main, spending by category, and every transaction that belongs
+  to it.
+- **Close:** move what's left to a cash, bank or wallet account; the fund
+  and its accounts are archived with their history. Undo or Reopen bring
+  it back.
+- Backups carry funds; older backups still restore.
+
+### 3.14 Crash safety
 - Every capture function runs inside `_safely`: if a parser throws on a
   format nobody foresaw, you get a blank Confirm Card with the raw text kept,
   never a crash.
@@ -265,7 +313,7 @@ hides an account; it doesn't erase money.
   parser. They found a real bug: 13+ digit numbers overflowed `int.parse`.
   Amounts are now capped at 12 rupee digits.
 
-### 3.13 Design system
+### 3.15 Design system
 - **The "Marigold & chai" palette:**
   - warm cream paper and espresso ink, with a marigold → coral hero gradient
   - dark mode uses cocoa → forest
@@ -317,7 +365,7 @@ Honest list, roughly ordered by how much it matters:
 
 | # | Work | Fixes |
 |---|---|---|
-| 1 | **Cash-flow forecast**: from bills and EMIs, "what's left on payday" (Phase 3) | — |
+| 1 | **Fund polish**: wedding/trip categories in the guess list, a fund's own budget by category, sharing a fund summary | — |
 | 2 | **More real-world fixtures**: SBI, HDFC, ICICI, Axis SMS and PhonePe/Paytm screenshots, anonymised into tests | 2, 3 |
 | 3 | **Smarter rules**: UPI ID prefix patterns; notes and tags | 4 |
 | 4 | **Loan schedule view**: the full amortisation table, floating-rate changes | 5 |

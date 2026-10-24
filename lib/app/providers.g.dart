@@ -1128,4 +1128,4 @@ final class CashForecastProvider
   }
 }
 
-String _$cashForecastHash() => r'7ae5e6f9d127dd11ae31d2863ba1a5a8ae79c3d0';
+String _$cashForecastHash() => r'de13bd4e638758dbf5a233a4593ee20659090c99';

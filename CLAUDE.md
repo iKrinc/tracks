@@ -131,8 +131,10 @@ input (shared SMS text | shared image | quick-add text | pasted text)
   (cycle, due, utilisation), loans and IOUs as accounts moved by transfers.
 - **Capture hardened:** real GPay/Canara/Kotak formats, SMS-thread screenshots → batch
   review, own crash-proof share channel, parser fuzz tests, rules learned from corrections.
-- **Phase 3 started:** Reports tab, EMI principal/interest split. Next: cash-flow forecast,
-  notification-listener capture (opt-in), more bank fixtures.
+- **Phase 3 started:** Reports tab, EMI principal/interest split, cash-flow forecast to
+  payday, **Funds** (owner's request 2026-10-24: separate money for an event such as a
+  wedding, kept out of main totals by default, can be merged; schema v6). Next:
+  notification-listener capture (opt-in), more bank fixtures, savings goals.
 
 ---
 

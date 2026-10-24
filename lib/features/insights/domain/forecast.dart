@@ -28,13 +28,14 @@ typedef ForecastEvent = ({
   bool overdue,
 });
 
-/// A spend the history estimate is made from.
+/// A spend the history estimate is made from. [notEveryday] marks bills
+/// and one-off event (fund) costs, which a usual day doesn't include.
 typedef SpendSample = ({
   TxnType type,
   int accountId,
   int paise,
   DateTime at,
-  bool recurring,
+  bool notEveryday,
 });
 
 class CashForecast {
@@ -249,7 +250,7 @@ int averageDailySpend(
     if (earliest == null || d.isBefore(earliest)) earliest = d;
     if (d.isBefore(from) ||
         t.type != TxnType.expense ||
-        t.recurring ||
+        t.notEveryday ||
         !liquidAccounts.contains(t.accountId)) {
       continue;
     }

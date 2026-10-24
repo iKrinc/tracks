@@ -302,6 +302,51 @@ class AppDatabase extends _$AppDatabase {
     return id;
   });
 
+  /// Closes fund [fundId]: moves [leftPaise] from [potId] to [toAccountId]
+  /// (when both are given) and archives the fund and its accounts. Returns
+  /// the leftover transfer's id, so Undo can take it back.
+  Future<int?> closeFund(
+    int fundId, {
+    int leftPaise = 0,
+    int? potId,
+    int? toAccountId,
+    String? note,
+  }) => transaction(() async {
+    int? moved;
+    if (leftPaise > 0 && potId != null && toAccountId != null) {
+      moved = await into(transactions).insert(
+        TransactionsCompanion.insert(
+          type: TxnType.transfer,
+          amountPaise: leftPaise,
+          accountId: potId,
+          toAccountId: Value(toAccountId),
+          note: Value(note ?? ''),
+          occurredAt: DateTime.now(),
+        ),
+      );
+    }
+    await (update(accounts)..where((a) => a.fundId.equals(fundId))).write(
+      const AccountsCompanion(archived: Value(true)),
+    );
+    await (update(funds)..where((f) => f.id.equals(fundId))).write(
+      const FundsCompanion(archived: Value(true)),
+    );
+    return moved;
+  });
+
+  /// Reopens a closed fund; [undoTransferId] also takes back the leftover
+  /// transfer made when it was closed.
+  Future<void> reopenFund(int fundId, {int? undoTransferId}) =>
+      transaction(() async {
+        if (undoTransferId != null) await deleteTransaction(undoTransferId);
+        await (update(accounts)..where((a) => a.fundId.equals(fundId))).write(
+          const AccountsCompanion(archived: Value(false)),
+        );
+        await (update(funds)..where((f) => f.id.equals(fundId))).write(
+          const FundsCompanion(archived: Value(false)),
+        );
+      });
+
   Stream<List<Rule>> watchRules() =>
       (select(rules)..orderBy([(r) => OrderingTerm.asc(r.keyword)])).watch();
 

@@ -166,27 +166,34 @@ class _FundCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    Semantics(
-                      label: '${spokenPaise(s.inFundPaise)} in the fund',
-                      excludeSemantics: true,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text(
-                            formatPaise(s.inFundPaise),
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontFeatures: const [
-                                FontFeature.tabularFigures(),
-                              ],
-                            ),
+                    Flexible(
+                      flex: 0,
+                      child: Semantics(
+                        label: '${spokenPaise(s.inFundPaise)} in the fund',
+                        excludeSemantics: true,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerRight,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                formatPaise(s.inFundPaise),
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  fontFeatures: const [
+                                    FontFeature.tabularFigures(),
+                                  ],
+                                ),
+                              ),
+                              Text(
+                                'in the fund',
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ],
                           ),
-                          Text(
-                            'in the fund',
-                            style: theme.textTheme.labelMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ],
@@ -321,7 +328,8 @@ class _NewFundSheetState extends ConsumerState<_NewFundSheet> {
               ),
               decoration: const InputDecoration(
                 prefixText: '₹ ',
-                hintText: 'Budget in all (optional)',
+                labelText: 'Budget in all (optional)',
+                hintText: '8,00,000',
               ),
             ),
             const SizedBox(height: 12),
@@ -332,7 +340,8 @@ class _NewFundSheetState extends ConsumerState<_NewFundSheet> {
               ),
               decoration: const InputDecoration(
                 prefixText: '₹ ',
-                hintText: 'Already set aside (optional)',
+                labelText: 'Already set aside (optional)',
+                hintText: '2,00,000',
               ),
             ),
             Padding(
@@ -344,11 +353,14 @@ class _NewFundSheetState extends ConsumerState<_NewFundSheet> {
               ),
             ),
             if (_error != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(
-                  _error!,
-                  style: TextStyle(color: theme.colorScheme.error),
+              Semantics(
+                liveRegion: true,
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    _error!,
+                    style: TextStyle(color: theme.colorScheme.error),
+                  ),
                 ),
               ),
             const SizedBox(height: 16),

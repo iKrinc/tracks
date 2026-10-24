@@ -294,15 +294,18 @@ CashForecast? cashForecast(Ref ref) {
   final recurrings = ref.watch(recurringsProvider).value;
   if (accounts == null || txns == null || recurrings == null) return null;
   final balances = ref.watch(balancesProvider);
-  // A separate fund's money isn't there to spend before payday.
-  final separate = ref.watch(separateFundAccountsProvider);
+  // A fund's money is earmarked (even when merged into the totals), so it
+  // is never counted as there to spend before payday.
   final liquid = {
     for (final a in accounts)
-      if (spendableAccountTypes.contains(a.type) && !separate.contains(a.id))
-        a.id,
+      if (spendableAccountTypes.contains(a.type) && a.fundId == null) a.id,
   };
   if (liquid.isEmpty) return null;
   final today = DateTime.now();
+  final fundAccounts = {
+    for (final a in accounts)
+      if (a.fundId != null) a.id,
+  };
   final active = recurrings.where((r) => r.status == RecurringStatus.active);
   // A card already paid by a bill (standing instruction) isn't counted twice.
   final paidByBill = {for (final r in active) ?r.toAccountId};
@@ -372,8 +375,13 @@ CashForecast? cashForecast(Ref ref) {
             accountId: t.accountId,
             paise: t.amountPaise,
             at: t.occurredAt,
-            recurring:
-                t.linkedRecurringId != null || t.source == TxnSource.recurring,
+            // Bills are forecast on their own; a fund's spends are one-off
+            // event costs, not what a usual day costs.
+            notEveryday:
+                t.linkedRecurringId != null ||
+                t.source == TxnSource.recurring ||
+                t.fundId != null ||
+                fundAccounts.contains(t.accountId),
           ),
       ],
       today: today,

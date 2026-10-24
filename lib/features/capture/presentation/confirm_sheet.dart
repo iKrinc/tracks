@@ -285,7 +285,12 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
             const SizedBox(height: 16),
             _Label(transfer ? 'From' : 'Account'),
             _AccountChips(
-              accounts: accounts,
+              // The suggested account first, so a match off-screen (e.g. a
+              // fund's account) is visible. Fixed once, so chips don't jump.
+              accounts: [
+                ...accounts.where((a) => a.id == _suggestedAccountId),
+                ...accounts.where((a) => a.id != _suggestedAccountId),
+              ],
               selected: _accountId,
               onSelected: (id) => setState(() {
                 _accountId = id;
@@ -344,7 +349,16 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
                   spacing: 8,
                   runSpacing: 8,
                   children: [
-                    for (final f in [null, ...openFunds])
+                    for (final f in [
+                      ?openFunds
+                          .where((f) => f.id == (accountFund ?? _fundId))
+                          .firstOrNull,
+                      if ((accountFund ?? _fundId) != null) null,
+                      ...openFunds.where(
+                        (f) => f.id != (accountFund ?? _fundId),
+                      ),
+                      if ((accountFund ?? _fundId) == null) null,
+                    ])
                       ChoiceChip(
                         label: Text(f?.name ?? 'None'),
                         selected: (accountFund ?? _fundId) == f?.id,
@@ -355,6 +369,17 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
                       ),
                   ],
                 ),
+                if (accountFund != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      "Spending from a fund's own account always counts for "
+                      'that fund.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
               ],
             ],
             const SizedBox(height: 12),

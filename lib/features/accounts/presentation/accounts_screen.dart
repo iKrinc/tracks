@@ -127,12 +127,12 @@ class AccountsScreen extends ConsumerWidget {
                     ),
                   ),
                   if (separate.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
+                    TextButton(
+                      onPressed: () => context.push('/funds'),
                       child: Text(
                         '+ ${formatPaise(keptApart)} kept in funds',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          fontFeatures: const [FontFeature.tabularFigures()],
+                        style: const TextStyle(
+                          fontFeatures: [FontFeature.tabularFigures()],
                         ),
                       ),
                     ),
