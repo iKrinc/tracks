@@ -674,7 +674,7 @@ final class AllDatedTxnsProvider
   }
 }
 
-String _$allDatedTxnsHash() => r'1134089581e6cbf34d6404026df50a65971d1043';
+String _$allDatedTxnsHash() => r'7a34d19905dada0ee6cdec44617674d0148d4901';
 
 /// Category id → parent id, for rolling subcategories up.
 
