@@ -58,6 +58,19 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         for (final c
             in ref.watch(categoriesProvider(kind)).value ?? const <Category>[])
           c.id: c,
+      // A synced fund shows as one slice of its own.
+      for (final f in ref.watch(fundsProvider).value ?? const <Fund>[])
+        fundCategoryId(f.id): Category(
+          id: fundCategoryId(f.id),
+          name: f.name,
+          kind: _kind == TxnType.income
+              ? CategoryKind.income
+              : CategoryKind.expense,
+          icon: f.icon,
+          color: f.color,
+          sortOrder: 0,
+          archived: f.archived,
+        ),
     };
 
     bool inRange(DatedTxn t, DateTime from, DateTime to) =>
@@ -164,10 +177,18 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               parentOf: {for (final c in lookup.values) c.id: c.parentId},
             ),
             categories: lookup,
-            onTap: (id) => context.push(
-              '/search',
-              extra: _args(type: _kind, categoryId: id),
-            ),
+            onTap: (id) {
+              // A fund's slice opens the fund; its money has no category.
+              final fund = fundOfCategoryId(id);
+              if (fund != null) {
+                context.push('/funds/$fund');
+              } else {
+                context.push(
+                  '/search',
+                  extra: _args(type: _kind, categoryId: id),
+                );
+              }
+            },
           ),
         ],
       ),

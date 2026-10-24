@@ -41,20 +41,12 @@ class FundScreen extends ConsumerWidget {
       for (final t in txns)
         if (belongsToFund(fundTxnOf(t), fund.id, ids)) t,
     ];
-    final categories = {
-      for (final c
-          in ref.watch(categoriesProvider(CategoryKind.expense)).value ??
-              const <Category>[])
-        c.id: c,
-    };
     final pot = view.accounts.where((a) => !a.archived).firstOrNull;
     final mainAccounts = [
       for (final a in ref.watch(accountsProvider).value ?? const <Account>[])
         if (a.fundId == null && spendableAccountTypes.contains(a.type)) a,
     ];
     final separate = fund.mode == FundMode.separate;
-    final ranked = s.byCategory.entries.toList()
-      ..sort((a, b) => b.value.compareTo(a.value));
 
     Future<void> capture(CaptureDraft d) => showConfirmSheet(context, draft: d);
 
@@ -95,7 +87,7 @@ class FundScreen extends ConsumerWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'In the fund',
+                        'Left in the fund',
                         style: theme.textTheme.labelLarge?.copyWith(
                           color: tokens.heroMuted,
                         ),
@@ -105,7 +97,7 @@ class FundScreen extends ConsumerWidget {
                         alignment: Alignment.centerLeft,
                         child: AnimatedAmount(
                           s.inFundPaise,
-                          semanticsPrefix: 'In the fund ',
+                          semanticsPrefix: 'Left in the fund ',
                           style: theme.textTheme.displaySmall?.copyWith(
                             color: tokens.heroInk,
                           ),
@@ -126,11 +118,17 @@ class FundScreen extends ConsumerWidget {
                         spacing: 24,
                         runSpacing: 8,
                         children: [
-                          _Stat('Spent', s.spentPaise),
-                          if (s.receivedPaise > 0)
-                            _Stat('Gifts & income', s.receivedPaise),
-                          if (s.spentFromMainPaise > 0)
-                            _Stat('Paid from main', s.spentFromMainPaise),
+                          // What was set aside at the start counts as in.
+                          _Stat(
+                            'Money in',
+                            view.accounts.fold(
+                                  0,
+                                  (sum, a) => sum + a.openingBalancePaise,
+                                ) +
+                                s.receivedPaise +
+                                s.movedInPaise,
+                          ),
+                          _Stat('Money out', s.spentPaise),
                         ],
                       ),
                     ],
@@ -145,11 +143,10 @@ class FundScreen extends ConsumerWidget {
                     title: const Text('Keep separate from my main money'),
                     subtitle: Text(
                       separate
-                          ? 'Its money and spending stay out of Home, Reports, '
-                                'budgets, net worth and the payday forecast.'
-                          : 'Counted in Home, Reports, budgets and net worth, '
-                                'and still tracked here. The payday forecast '
-                                'never spends it.',
+                          ? 'Tracked only here. Nothing shows in Home, '
+                                'Reports, budgets or net worth.'
+                          : 'Also in Home and Reports, as "${fund.name} – '
+                                'catering". Switch back any time.',
                     ),
                     onChanged: (v) => ref
                         .read(appDatabaseProvider)
@@ -173,11 +170,10 @@ class FundScreen extends ConsumerWidget {
                             type: TxnType.expense,
                             source: TxnSource.manual,
                             accountId: pot.id,
-                            fundId: fund.id,
                           ),
                         ),
                         icon: const Icon(Icons.remove),
-                        label: const Text('Add spend'),
+                        label: const Text('Money out'),
                       ),
                       FilledButton.tonalIcon(
                         onPressed: mainAccounts.isEmpty
@@ -191,44 +187,31 @@ class FundScreen extends ConsumerWidget {
                                   toAccountId: pot.id,
                                 ),
                               ),
-                        icon: const Icon(Icons.add),
-                        label: const Text('Add money'),
+                        icon: const Icon(Icons.move_down),
+                        label: const Text('Move from my accounts'),
                       ),
                       OutlinedButton.icon(
                         onPressed: () => capture(
                           CaptureDraft(
                             type: TxnType.income,
                             source: TxnSource.manual,
-                            note: 'Gift',
                             accountId: pot.id,
-                            fundId: fund.id,
                           ),
                         ),
-                        icon: const Icon(Icons.redeem),
-                        label: const Text('Gift received'),
+                        icon: const Icon(Icons.add),
+                        label: const Text('Money in'),
                       ),
                     ],
                   ),
-                ],
-                if (ranked.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  Text('Where it went', style: theme.textTheme.titleSmall),
-                  const SizedBox(height: 8),
-                  for (final e in ranked)
-                    _CategoryBar(
-                      category: categories[e.key],
-                      paise: e.value,
-                      of: s.spentPaise,
-                    ),
                 ],
                 const SizedBox(height: 12),
                 if (mine.isEmpty)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 24),
                     child: Text(
-                      'Nothing yet. Add money, then spends like "catering '
-                      '50000 ${fund.name.toLowerCase()}" from Home go '
-                      'straight here.',
+                      'Nothing yet. Add money in, or type "catering 50000 '
+                      '${fund.name.toLowerCase()}" on Home: it goes straight '
+                      'here.',
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
@@ -238,7 +221,7 @@ class FundScreen extends ConsumerWidget {
               ],
             ),
           ),
-          ...dayGroupSlivers(mine, watchTxnLookup(ref)),
+          ...dayGroupSlivers(mine, watchTxnLookup(ref), inFund: true),
           const SliverToBoxAdapter(child: SizedBox(height: 32)),
         ],
       ),
@@ -477,59 +460,6 @@ class _Stat extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// A ranked bar: one hue, direct label (dataviz part-to-whole rule).
-class _CategoryBar extends StatelessWidget {
-  const _CategoryBar({
-    required this.category,
-    required this.paise,
-    required this.of,
-  });
-
-  final Category? category;
-  final int paise;
-  final int of;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final name = category?.name ?? 'Uncategorised';
-    final share = of <= 0 ? 0.0 : paise / of;
-    return Semantics(
-      label: '$name ${spokenPaise(paise)}, ${(share * 100).round()} percent',
-      excludeSemantics: true,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(child: Text(name, style: theme.textTheme.bodyMedium)),
-                Text(
-                  formatPaise(paise),
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontFeatures: const [FontFeature.tabularFigures()],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: share,
-                minHeight: 8,
-                color: theme.tokens.seriesA,
-                backgroundColor: theme.colorScheme.surfaceContainer,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

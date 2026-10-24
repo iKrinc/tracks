@@ -50,18 +50,16 @@ bool belongsToFund(FundTxn t, int fundId, Set<int> fundAccounts) =>
 typedef FundSummary = ({
   int inFundPaise,
   int spentPaise,
-  int spentFromMainPaise,
   int receivedPaise,
   int movedInPaise,
   int movedOutPaise,
   int? budgetLeftPaise,
   int? percentOfBudget,
-  Map<int?, int> byCategory,
   int count,
 });
 
-/// Where a fund stands: what's in it, what the event has cost (from the
-/// fund and from main), gifts/income received, and money moved in or out.
+/// Where a fund stands. A fund is its own category: just money in (gifts,
+/// income), money out, and money moved to or from your main accounts.
 FundSummary summarizeFund({
   required int fundId,
   required Set<int> fundAccounts,
@@ -70,12 +68,10 @@ FundSummary summarizeFund({
   int? budgetPaise,
 }) {
   var spent = 0;
-  var fromMain = 0;
   var received = 0;
   var movedIn = 0;
   var movedOut = 0;
   var count = 0;
-  final byCategory = <int?, int>{};
   for (final t in txns) {
     if (!belongsToFund(t, fundId, fundAccounts)) continue;
     count++;
@@ -83,8 +79,6 @@ FundSummary summarizeFund({
     switch (t.type) {
       case TxnType.expense:
         spent += t.paise;
-        if (!inFund) fromMain += t.paise;
-        byCategory[t.categoryId] = (byCategory[t.categoryId] ?? 0) + t.paise;
       case TxnType.income:
         received += t.paise;
       case TxnType.transfer:
@@ -98,7 +92,6 @@ FundSummary summarizeFund({
   return (
     inFundPaise: inFundPaise,
     spentPaise: spent,
-    spentFromMainPaise: fromMain,
     receivedPaise: received,
     movedInPaise: movedIn,
     movedOutPaise: movedOut,
@@ -106,7 +99,6 @@ FundSummary summarizeFund({
     percentOfBudget: budget == null || budget <= 0
         ? null
         : spent * 100 ~/ budget,
-    byCategory: byCategory,
     count: count,
   );
 }

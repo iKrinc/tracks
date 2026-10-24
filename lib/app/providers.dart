@@ -88,6 +88,12 @@ Set<int> separateFundAccounts(Ref ref) => separateAccountIds(
   ],
 );
 
+/// The report category a synced fund's money in/out is grouped under.
+int fundCategoryId(int fundId) => -fundId;
+
+/// The fund behind a report category id, if it is one.
+int? fundOfCategoryId(int? id) => id != null && id < 0 ? -id : null;
+
 FundTxn fundTxnOf(Transaction t) => (
   type: t.type,
   accountId: t.accountId,
@@ -140,6 +146,11 @@ class ViewMode extends _$ViewMode {
 @riverpod
 Stream<List<DatedTxn>> allDatedTxns(Ref ref) {
   final separate = ref.watch(separateFundAccountsProvider);
+  // A synced fund's money in/out reports as the fund itself.
+  final fundOf = {
+    for (final a in ref.watch(allAccountsProvider).value ?? const <Account>[])
+      if (a.fundId != null) a.id: a.fundId!,
+  };
   return ref
       .watch(appDatabaseProvider)
       .watchAllTransactions()
@@ -150,7 +161,10 @@ Stream<List<DatedTxn>> allDatedTxns(Ref ref) {
               type: t.type,
               amountPaise: t.amountPaise,
               occurredAt: t.occurredAt,
-              categoryId: t.categoryId,
+              categoryId:
+                  t.type != TxnType.transfer && fundOf[t.accountId] != null
+                  ? fundCategoryId(fundOf[t.accountId]!)
+                  : t.categoryId,
             ),
         ],
       );

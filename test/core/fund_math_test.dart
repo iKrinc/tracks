@@ -111,8 +111,6 @@ void main() {
       // Catering and hall from the fund.
       t(TxnType.expense, 9000000, account: weddingPot, category: 1),
       t(TxnType.expense, 6000000, account: weddingPot, category: 2),
-      // Jewellery paid from the bank, tagged to the wedding.
-      t(TxnType.expense, 3000000, account: bank, fund: marriage, category: 3),
       // Leftover partly moved back.
       t(TxnType.transfer, 1000000, account: weddingPot, to: bank),
       // Unrelated.
@@ -120,7 +118,7 @@ void main() {
       t(TxnType.expense, 888, account: tripPot),
     ];
 
-    test('spent against budget, from the fund and from main', () {
+    test('money in, money out and what is left against the budget', () {
       final s = summarizeFund(
         fundId: marriage,
         fundAccounts: {weddingPot},
@@ -128,16 +126,14 @@ void main() {
         inFundPaise: 9000000,
         budgetPaise: 25000000,
       );
-      expect(s.spentPaise, 18000000);
-      expect(s.spentFromMainPaise, 3000000);
+      expect(s.spentPaise, 15000000);
       expect(s.receivedPaise, 5000000);
       expect(s.movedInPaise, 20000000);
       expect(s.movedOutPaise, 1000000);
       expect(s.inFundPaise, 9000000);
-      expect(s.budgetLeftPaise, 7000000);
-      expect(s.percentOfBudget, 72);
-      expect(s.byCategory, {1: 9000000, 2: 6000000, 3: 3000000});
-      expect(s.count, 6);
+      expect(s.budgetLeftPaise, 10000000);
+      expect(s.percentOfBudget, 60);
+      expect(s.count, 5);
     });
 
     test('no budget: nothing left to compare', () {
@@ -151,11 +147,11 @@ void main() {
       expect(s.percentOfBudget, isNull);
     });
 
-    test('belongsToFund picks its accounts and its tagged spends only', () {
+    test('belongsToFund picks its own accounts only', () {
       final mine = txns
           .where((x) => belongsToFund(x, marriage, {weddingPot}))
           .length;
-      expect(mine, 6);
+      expect(mine, 5);
     });
   });
 }

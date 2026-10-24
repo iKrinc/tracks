@@ -12,6 +12,7 @@ import 'package:tracks/features/transactions/domain/summary.dart';
 typedef TxnLookup = ({
   Map<int, Account> accounts,
   Map<int, Category> categories,
+  Map<int, Fund> funds,
 });
 
 TxnLookup watchTxnLookup(WidgetRef ref) => (
@@ -24,6 +25,9 @@ TxnLookup watchTxnLookup(WidgetRef ref) => (
       for (final c
           in ref.watch(categoriesProvider(kind)).value ?? const <Category>[])
         c.id: c,
+  },
+  funds: {
+    for (final f in ref.watch(fundsProvider).value ?? const <Fund>[]) f.id: f,
   },
 );
 
@@ -68,14 +72,21 @@ class SignedAmountText extends StatelessWidget {
   }
 }
 
-/// Day header + rows, as slivers, for a newest-first list.
-List<Widget> dayGroupSlivers(List<Transaction> txns, TxnLookup lookup) => [
+/// Day header + rows, as slivers, for a newest-first list. Inside a fund's
+/// own screen, [inFund] drops the "Marriage –" prefix.
+List<Widget> dayGroupSlivers(
+  List<Transaction> txns,
+  TxnLookup lookup, {
+  bool inFund = false,
+}) => [
   for (final (day, items) in groupByDay(txns, (t) => t.occurredAt)) ...[
     SliverToBoxAdapter(
       child: DayHeader(day: day, items: items),
     ),
     SliverList.list(
-      children: [for (final t in items) TxnTile(txn: t, lookup: lookup)],
+      children: [
+        for (final t in items) TxnTile(txn: t, lookup: lookup, inFund: inFund),
+      ],
     ),
   ],
 ];
@@ -111,10 +122,18 @@ class DayHeader extends StatelessWidget {
 }
 
 class TxnTile extends ConsumerWidget {
-  const TxnTile({super.key, required this.txn, required this.lookup});
+  const TxnTile({
+    super.key,
+    required this.txn,
+    required this.lookup,
+    this.inFund = false,
+  });
 
   final Transaction txn;
   final TxnLookup lookup;
+
+  /// Shown on its fund's own screen, where the fund name is redundant.
+  final bool inFund;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -127,12 +146,26 @@ class TxnTile extends ConsumerWidget {
         ? null
         : lookup.categories[txn.categoryId];
     final transfer = txn.type == TxnType.transfer;
-    final title = txn.note.isNotEmpty
-        ? txn.note
-        : (transfer ? 'Transfer' : category?.name ?? 'Uncategorised');
-    final subtitle = transfer
-        ? '${account?.name ?? '?'} → ${toAccount?.name ?? '?'}'
-        : [category?.name, account?.name].nonNulls.join(' · ');
+    // A fund's money in and out: the fund is its category.
+    final fund = transfer || account?.fundId == null
+        ? null
+        : lookup.funds[account!.fundId];
+    final String title;
+    final String subtitle;
+    if (fund != null) {
+      final what = txn.note.isNotEmpty
+          ? txn.note
+          : (txn.type == TxnType.income ? 'Money in' : 'Money out');
+      title = inFund ? what : '${fund.name} – $what';
+      subtitle = '';
+    } else {
+      title = txn.note.isNotEmpty
+          ? txn.note
+          : (transfer ? 'Transfer' : category?.name ?? 'Uncategorised');
+      subtitle = transfer
+          ? '${account?.name ?? '?'} → ${toAccount?.name ?? '?'}'
+          : [category?.name, account?.name].nonNulls.join(' · ');
+    }
     final color = switch (txn.type) {
       TxnType.income => theme.incomeColor,
       TxnType.expense => theme.expenseColor,
@@ -169,12 +202,16 @@ class TxnTile extends ConsumerWidget {
       },
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: category == null
+          backgroundColor: fund != null
+              ? Color(fund.color)
+              : category == null
               ? Palette.sand
               : Color(category.color),
           foregroundColor: Colors.black87,
           child: Icon(
-            transfer ? Icons.swap_horiz : iconFor(category?.icon ?? ''),
+            transfer
+                ? Icons.swap_horiz
+                : iconFor(fund?.icon ?? category?.icon ?? ''),
             size: 20,
           ),
         ),

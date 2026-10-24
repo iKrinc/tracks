@@ -28,7 +28,6 @@ class CaptureDraft {
     this.categoryId,
     this.linkedRecurringId,
     this.person,
-    this.fundId,
   });
 
   final TxnType type;
@@ -68,9 +67,6 @@ class CaptureDraft {
 
   /// Someone money was lent to or borrowed from ("lent 2000 to ravi").
   final String? person;
-
-  /// The fund this is for, e.g. opened from a fund's screen.
-  final int? fundId;
 }
 
 sealed class CaptureOutcome {
