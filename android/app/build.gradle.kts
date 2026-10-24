@@ -39,6 +39,26 @@ android {
         versionName = flutter.versionName
     }
 
+    // `flutter build apk --target-platform android-arm64` builds tracks.apk
+    // for 64-bit phones only, plugins' native code included. Unlike
+    // --split-per-abi it keeps the version code, so it and
+    // tracks-universal.apk can replace each other.
+    val abiOf = mapOf(
+        "android-arm" to "armeabi-v7a",
+        "android-arm64" to "arm64-v8a",
+        "android-x64" to "x86_64",
+    )
+    (project.findProperty("target-platform") as String?)
+        ?.takeIf { !it.contains(",") }
+        ?.let { abiOf[it] }
+        ?.let { keep ->
+            packaging {
+                jniLibs {
+                    for (abi in abiOf.values - keep) excludes += "lib/$abi/**"
+                }
+            }
+        }
+
     signingConfigs {
         if (keystoreProperties.containsKey("storeFile")) {
             create("release") {

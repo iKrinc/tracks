@@ -27,10 +27,12 @@ newest one without changing the page.
    ```
    flutter build apk --release
    copy build\app\outputs\flutter-apk\app-release.apk dist\tracks-universal.apk
-   flutter build apk --release --split-per-abi
-   copy build\app\outputs\flutter-apk\app-arm64-v8a-release.apk dist\tracks.apk
+   flutter build apk --release --target-platform android-arm64
+   copy build\app\outputs\flutter-apk\app-release.apk dist\tracks.apk
    ```
-4. On GitHub: Releases → Draft a new release → tag `v0.2.0` → attach
-   `dist/tracks.apk` and `dist/tracks-universal.apk` with exactly those
-   names → Publish. The download page picks it up at once.
+   Don't use `--split-per-abi`: it multiplies the version code (2 becomes
+   2002), so a phone with one APK could never install the other.
+4. `powershell -ExecutionPolicy Bypass -File .\tool\release.ps1 -Tag v0.2.0`
+   creates the release (or replaces its APKs) using Git's stored GitHub
+   login. The download page picks it up at once.
 5. Update the version shown in `site/index.html` and push; Vercel redeploys.
