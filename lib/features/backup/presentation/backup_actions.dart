@@ -99,14 +99,19 @@ Future<void> exportCsv(WidgetRef ref) async {
 /// Files from Drive or other cloud apps come as content:// links with no
 /// path on the phone, so Android reads those for us.
 Future<String?> pickTextFile(List<String> extensions) async {
-  final files = await FilePicker.pickFiles(
-    type: FileType.custom,
-    allowedExtensions: extensions,
-  );
+  // No type filter: phones label a downloaded .json as JSON, text or plain
+  // "file", and a filtered-out file can't be picked. The content is checked
+  // after picking instead.
+  final files = await FilePicker.pickFiles(type: FileType.any);
   if (files.isEmpty) return null;
   final f = files.first;
-  if (f.path != null) {
-    return utf8.decode(await File(f.path!).readAsBytes(), allowMalformed: true);
+  final path = f.path;
+  if (path != null) {
+    try {
+      return utf8.decode(await File(path).readAsBytes(), allowMalformed: true);
+    } catch (_) {
+      // Fall through to Android's reader.
+    }
   }
   final copied = ShareChannel.supported
       ? await ShareChannel.instance.copyUri(f.uri.toString())

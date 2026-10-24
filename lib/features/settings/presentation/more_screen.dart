@@ -108,6 +108,13 @@ class MoreScreen extends ConsumerWidget {
               style: theme.textTheme.bodySmall,
             ),
           ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
+            child: Text(
+              'Version ${const String.fromEnvironment('FLUTTER_BUILD_NAME', defaultValue: 'dev')}',
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
         ],
       ),
     );

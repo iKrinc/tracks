@@ -177,13 +177,21 @@ QuickAddResult? parseQuickAdd(
     remaining.add(t);
   }
 
-  // 5. Amount: the last token that reads as money.
+  // 5. Amount: the last token that reads as money. A currency word right
+  // before or after it ("20 rs", "rs 20") belongs to it.
   int? amount;
   for (var i = remaining.length - 1; i >= 0; i--) {
     final a = _parseAmountToken(remaining[i]);
     if (a != null) {
       amount = a;
       remaining.removeAt(i);
+      if (i < remaining.length &&
+          _currencyWords.contains(remaining[i].toLowerCase())) {
+        remaining.removeAt(i);
+      }
+      if (i > 0 && _currencyWords.contains(remaining[i - 1].toLowerCase())) {
+        remaining.removeAt(i - 1);
+      }
       break;
     }
   }
@@ -200,13 +208,23 @@ QuickAddResult? parseQuickAdd(
   );
 }
 
+/// Currency written after the number: "20rs", "20₹", "20inr", "20rupees".
+final _currencySuffix = RegExp(r'(?:rs\.?|inr|₹|rupees?)$');
+
+/// A currency word on its own: "20 rs", "rs 20", "₹ 20".
+const _currencyWords = {'rs', 'rs.', 'inr', '₹', 'rupee', 'rupees'};
+
 int? _parseAmountToken(String token) {
-  final lower = token.toLowerCase();
+  var lower = token.toLowerCase();
+  final suffix = _currencySuffix.firstMatch(lower);
+  if (suffix != null && suffix.start > 0) {
+    lower = lower.substring(0, suffix.start);
+  }
   if (lower.endsWith('k') && lower.length > 1) {
     final base = parseRupeesToPaise(lower.substring(0, lower.length - 1));
     return base == null ? null : base * 1000;
   }
-  return parseRupeesToPaise(token);
+  return parseRupeesToPaise(lower);
 }
 
 DateTime? _parseDateToken(String lower, DateTime today) {

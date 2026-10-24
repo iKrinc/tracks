@@ -175,4 +175,45 @@ void main() {
     expect(r.description, 'Petrol');
     expect(r.accountHint, 'card');
   });
+
+  group('amounts as people type them', () {
+    for (final (input, paise) in [
+      ('chai gpay 20rs', 2000),
+      ('chai 20rs gpay', 2000),
+      ('chai 20 rs gpay', 2000),
+      ('chai rs 20', 2000),
+      ('chai rs20', 2000),
+      ('chai rs.20', 2000),
+      ('chai 20₹', 2000),
+      ('chai ₹ 20', 2000),
+      ('chai 20 rupees', 2000),
+      ('chai 20inr', 2000),
+      ('chai 20.50rs', 2050),
+      ('chai 20/-', 2000),
+      ('rent 12,000rs hdfc', 1200000),
+    ]) {
+      test(input, () {
+        final r = p(input);
+        expect(r, isNotNull, reason: input);
+        expect(r!.amountPaise, paise);
+        expect(r.description.toLowerCase(), isNot(contains('rs')));
+        expect(r.description.toLowerCase(), isNot(contains('rupee')));
+      });
+    }
+
+    test('gpay is still the account when the amount says rs', () {
+      final r = parseQuickAdd(
+        'chai gpay 20rs',
+        now: now,
+        accountKeywords: {'gpay'},
+      )!;
+      expect(r.description, 'chai');
+      expect(r.accountHint, 'gpay');
+    });
+
+    test('words that only look like amounts stay words', () {
+      expect(p('chai rs'), isNull);
+      expect(p('chairs 20')!.description, 'chairs');
+    });
+  });
 }

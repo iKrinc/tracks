@@ -9,6 +9,7 @@ import 'package:tracks/features/capture/presentation/share_intake.dart';
 import 'package:tracks/features/recurring/domain/reminder_plan.dart';
 import 'package:tracks/features/recurring/data/reminder_service.dart';
 import 'package:tracks/features/recurring/presentation/recurring_screen.dart';
+import 'package:tracks/features/capture/data/share_channel.dart';
 import 'package:tracks/features/settings/presentation/welcome_screen.dart';
 
 /// Bottom navigation around the tabs. Share intake lives here so an SMS or
@@ -66,6 +67,14 @@ class _AppShellState extends ConsumerState<AppShell> {
   Future<void> _maybeWelcome() async {
     final db = ref.read(appDatabaseProvider);
     if (await db.getSetting(welcomeSeenKey) != null) return;
+    // Opened by sharing something in (say a backup from Drive): showing the
+    // welcome would throw that share away. Handle it; welcome next time.
+    if (ShareChannel.supported) {
+      final shared = await ShareChannel.instance.peekInitial();
+      if (shared != null && (shared.files.isNotEmpty || shared.text != null)) {
+        return;
+      }
+    }
     final hasData = (await (db.select(
       db.transactions,
     )..limit(1)).get()).isNotEmpty;

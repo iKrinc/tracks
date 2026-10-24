@@ -31,7 +31,14 @@ class TracksApp extends ConsumerWidget {
               mq.textScaler.scale(1) * a.textSize.factor,
             ),
           ),
-          child: AppLockGate(child: child!),
+          // Tapping anywhere that isn't a text field closes the keyboard
+          // (phones keep a field focused otherwise). Taps on fields and
+          // buttons still go to them first.
+          child: GestureDetector(
+            behavior: HitTestBehavior.translucent,
+            onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+            child: AppLockGate(child: child!),
+          ),
         );
       },
     );

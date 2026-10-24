@@ -68,7 +68,23 @@ class ShareChannel {
       !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   /// What the app was opened with, once (null if it wasn't a share).
-  Future<SharedPayload?> initial() async {
+  /// What the app was opened with, without using it up: the first-run
+  /// welcome checks this so it doesn't hide a share.
+  Future<SharedPayload?> peekInitial() => _initial ??= _readInitial();
+  Future<SharedPayload?>? _initial;
+  bool _initialTaken = false;
+
+  /// The launch share, handed to exactly one caller; later callers (a
+  /// screen rebuilt after restoring, say) get null so it isn't handled
+  /// twice.
+  Future<SharedPayload?> takeInitial() async {
+    final p = await peekInitial();
+    if (_initialTaken) return null;
+    _initialTaken = true;
+    return p;
+  }
+
+  Future<SharedPayload?> _readInitial() async {
     try {
       final raw = await _channel.invokeMethod<Object?>('initial');
       return raw == null ? null : SharedPayload.fromMap(raw);

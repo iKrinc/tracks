@@ -278,9 +278,16 @@ class _ConfirmSheetState extends ConsumerState<ConfirmSheet> {
             _AccountChips(
               // The suggested account first, so a match off-screen (e.g. a
               // fund's account) is visible. Fixed once, so chips don't jump.
+              // Then main accounts, then funds' accounts, so a fund isn't
+              // picked by mistake for an everyday spend.
               accounts: [
                 ...accounts.where((a) => a.id == _suggestedAccountId),
-                ...accounts.where((a) => a.id != _suggestedAccountId),
+                ...accounts.where(
+                  (a) => a.id != _suggestedAccountId && a.fundId == null,
+                ),
+                ...accounts.where(
+                  (a) => a.id != _suggestedAccountId && a.fundId != null,
+                ),
               ],
               selected: _accountId,
               onSelected: (id) => setState(() {

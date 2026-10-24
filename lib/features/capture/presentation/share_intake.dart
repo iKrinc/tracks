@@ -12,6 +12,7 @@ import 'package:tracks/features/capture/data/share_channel.dart';
 import 'package:tracks/features/capture/domain/capture_draft.dart';
 import 'package:tracks/features/capture/presentation/batch_review_sheet.dart';
 import 'package:tracks/features/capture/presentation/confirm_sheet.dart';
+import 'package:tracks/features/settings/presentation/welcome_screen.dart';
 
 /// Words that identify the user's accounts in typed or shared text.
 Set<String> accountKeywordsOf(List<Account> accounts) => {
@@ -65,7 +66,7 @@ class _ShareIntakeState extends ConsumerState<ShareIntake> {
     if (!ShareChannel.supported) return;
     final channel = ShareChannel.instance;
     // Shared while the app was closed…
-    channel.initial().then((p) {
+    channel.takeInitial().then((p) {
       if (p != null) _safely(p);
     });
     // …or while it's running.
@@ -130,7 +131,10 @@ class _ShareIntakeState extends ConsumerState<ShareIntake> {
       if (!mounted) return;
       await guardFileJob(context, () async {
         if (isJson) {
-          await restoreFromJsonText(context, ref, contents);
+          if (await restoreFromJsonText(context, ref, contents)) {
+            await ref.read(appDatabaseProvider).setSetting(welcomeSeenKey, '1');
+            if (mounted) GoRouter.of(context).go('/');
+          }
         } else {
           await importCsvText(context, ref, contents);
         }
